@@ -56,11 +56,21 @@ impl Problem {
             usize,
             "Parameter for jobs number should be an unsigned integer"
         );
+        if jobs_number < 1 {
+            return Err(parser_err!(
+                "Parameter for jobs number should be a positive number"
+            ));
+        }
         let machines_number = required_param!(
             1,
             usize,
             "Parameter for machines number should be an unsigned integer"
         );
+        if machines_number < 1 {
+            return Err(parser_err!(
+                "Parameter for machines number should be a positive number"
+            ));
+        }
         let initial_seed = optional_param!(
             2,
             u64,
