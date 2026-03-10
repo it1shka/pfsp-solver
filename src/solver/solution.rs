@@ -5,6 +5,14 @@ use crate::solver::problem::Time;
 pub struct Solution(pub Vec<usize>);
 
 impl Solution {
+    pub fn empty() -> Self {
+        Solution(vec![])
+    }
+
+    pub fn is_valid(&self, jobs_amount: usize) -> bool {
+        self.0.len() == jobs_amount
+    }
+
     pub fn total_flow_time(&self, processing_times: &[Vec<Time>]) -> Time {
         let machines_number = processing_times.len();
         let mut clock = vec![0; machines_number];
