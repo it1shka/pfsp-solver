@@ -10,6 +10,8 @@ use ratatui::{Terminal, prelude::CrosstermBackend};
 
 use crate::tui::{state::AppState, view::render_loop};
 
+mod gantt;
+mod helpers;
 mod state;
 mod view;
 

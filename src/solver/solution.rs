@@ -1,4 +1,4 @@
-use std::cmp::max;
+use std::{cmp::max, collections::HashSet};
 
 use crate::solver::problem::Time;
 
@@ -10,7 +10,16 @@ impl Solution {
     }
 
     pub fn is_valid(&self, jobs_amount: usize) -> bool {
-        self.0.len() == jobs_amount
+        if self.0.len() != jobs_amount {
+            return false;
+        }
+        let mut set = HashSet::new();
+        for nth in &self.0 {
+            if *nth >= jobs_amount || !set.insert(*nth) {
+                return false;
+            }
+        }
+        true
     }
 
     pub fn total_flow_time(&self, processing_times: &[Vec<Time>]) -> Time {

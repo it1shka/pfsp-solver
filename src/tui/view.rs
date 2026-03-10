@@ -6,10 +6,14 @@ use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
     prelude::Backend,
     style::{Color, Style},
-    widgets::{Block, Borders, List, ListItem, Paragraph},
+    widgets::{Block, Borders, Cell, List, ListItem, Paragraph, Row, Table, Wrap},
 };
 
-use crate::tui::state::{AppEvent, AppScreen, AppState};
+use crate::tui::{
+    gantt::render_gantt_chart,
+    helpers::parse_solution,
+    state::{AppEvent, AppScreen, AppState},
+};
 
 const EVENT_POLL_TIME: u64 = 33;
 
@@ -151,5 +155,111 @@ fn render_control_panel(frame: &mut Frame, state: &AppState, rect: Rect) {
 fn render_main_panel(frame: &mut Frame, state: &AppState, rect: Rect) {
     let block = Block::default().borders(Borders::ALL);
     // TODO:
-    frame.render_widget(block, rect);
+    frame.render_widget(&block, rect);
+    let inner_rect = block.inner(rect);
+    match state.screen {
+        AppScreen::ProblemInstance => {
+            render_main_panel_for_problem_description(frame, state, inner_rect)
+        }
+        AppScreen::CurrentSolution => {
+            render_main_panel_for_solution_input(frame, state, inner_rect)
+        }
+        _ => {} // TODO:
+    };
+}
+
+fn render_main_panel_for_problem_description(frame: &mut Frame, state: &AppState, rect: Rect) {
+    let chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([Constraint::Length(7), Constraint::Min(0)])
+        .split(rect);
+
+    let items = [
+        ListItem::new(format!("Jobs: {}", state.problem.jobs_number)),
+        ListItem::new(format!("Machines: {}", state.problem.machines_number)),
+        ListItem::new(
+            state
+                .problem
+                .initial_seed
+                .map(|seed| format!("Seed: {}", seed))
+                .unwrap_or(String::from("Seed: -")),
+        ),
+        ListItem::new(
+            state
+                .problem
+                .upper_bound
+                .map(|upper_bound| format!("Upper bound: {}", upper_bound))
+                .unwrap_or(String::from("Upper bound: -")),
+        ),
+        ListItem::new(
+            state
+                .problem
+                .lower_bound
+                .map(|lower_bound| format!("Lower bound: {}", lower_bound))
+                .unwrap_or(String::from("Lower bound: -")),
+        ),
+    ];
+    let list = List::new(items).block(
+        Block::default()
+            .title("Problem Instance")
+            .borders(Borders::ALL),
+    );
+    frame.render_widget(list, chunks[0]);
+
+    let rows = state
+        .problem
+        .processing_times
+        .iter()
+        .map(|row| Row::new(row.iter().map(|c| Cell::from(c.to_string()))))
+        .collect::<Vec<_>>();
+    let width =
+        vec![Constraint::Length(4); state.problem.processing_times.get(0).map_or(0, |r| r.len())];
+    let table = Table::new(rows, width).block(
+        Block::default()
+            .title("Processing times")
+            .borders(Borders::ALL),
+    );
+
+    frame.render_widget(table, chunks[1]);
+}
+
+fn render_main_panel_for_solution_input(frame: &mut Frame, state: &AppState, rect: Rect) {
+    let chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([Constraint::Length(5), Constraint::Min(0)])
+        .split(rect);
+
+    let input_p = Paragraph::new(format!("{}_", state.raw_solution))
+        .wrap(Wrap { trim: false })
+        .block(
+            Block::default()
+                .title("Current Solution")
+                .borders(Borders::ALL),
+        );
+    frame.render_widget(input_p, chunks[0]);
+
+    let parsed_solution = parse_solution(&state.raw_solution);
+
+    if let Some(solution) = parsed_solution
+        && solution.is_valid(state.problem.jobs_number)
+    {
+        let total_flow_time = solution.total_flow_time(&state.problem.processing_times);
+        let graph_data = solution.graph_data(&state.problem.processing_times);
+
+        let inner_chunks = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([Constraint::Length(3), Constraint::Min(0)])
+            .split(chunks[1]);
+
+        let total_flow_time_p = Paragraph::new(total_flow_time.to_string()).block(
+            Block::default()
+                .title("Total Flow Time")
+                .borders(Borders::ALL),
+        );
+        frame.render_widget(total_flow_time_p, inner_chunks[0]);
+
+        render_gantt_chart("Flow Visualization", frame, inner_chunks[1], &graph_data);
+
+        return;
+    }
 }
