@@ -1,5 +1,7 @@
 use std::{cmp::max, collections::HashSet};
 
+use rand::{SeedableRng, rngs::StdRng, seq::SliceRandom};
+
 use crate::solver::problem::Time;
 
 pub struct Solution(pub Vec<usize>);
@@ -9,13 +11,26 @@ impl Solution {
         Solution(vec![])
     }
 
-    pub fn parse(raw_solution: &str) -> Option<Solution> {
+    pub fn parse(raw_solution: &str) -> Option<Self> {
         raw_solution
             .split_whitespace()
             .map(|chunk| str::parse::<usize>(chunk))
             .collect::<Result<Vec<_>, _>>()
             .ok()
             .map(|result| Solution(result))
+    }
+
+    pub fn generate_random(jobs_amount: usize) -> Self {
+        let mut solution = (0..jobs_amount).collect::<Vec<usize>>();
+        solution.shuffle(&mut rand::rng());
+        Solution(solution)
+    }
+
+    pub fn generate_from_seed(jobs_amount: usize, seed: u64) -> Self {
+        let mut rng = StdRng::seed_from_u64(seed);
+        let mut solution = (0..jobs_amount).collect::<Vec<usize>>();
+        solution.shuffle(&mut rng);
+        Solution(solution)
     }
 
     pub fn is_loosely_valid(&self, jobs_amount: usize) -> bool {
