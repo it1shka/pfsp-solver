@@ -7,11 +7,11 @@ use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
     prelude::Backend,
     style::{Color, Style},
-    widgets::{Block, Borders, Cell, List, ListItem, Paragraph, Row, Table},
+    widgets::{Block, Borders, List, ListItem, Paragraph},
 };
 
 use crate::tui::{
-    components::{gantt::render_gantt_chart, input::render_input},
+    components::{gantt::render_gantt_chart, input::render_input, matrix::render_matrix},
     state::{AppEvent, AppScreen, AppState},
 };
 
@@ -204,21 +204,12 @@ fn render_main_panel_for_problem_description(frame: &mut Frame, state: &AppState
     );
     frame.render_widget(list, chunks[0]);
 
-    let rows = state
-        .problem
-        .processing_times
-        .iter()
-        .map(|row| Row::new(row.iter().map(|c| Cell::from(c.to_string()))))
-        .collect::<Vec<_>>();
-    let width =
-        vec![Constraint::Length(4); state.problem.processing_times.get(0).map_or(0, |r| r.len())];
-    let table = Table::new(rows, width).block(
-        Block::default()
-            .title("Processing times")
-            .borders(Borders::ALL),
+    render_matrix(
+        frame,
+        chunks[1],
+        &state.problem.processing_times,
+        &state.matrix,
     );
-
-    frame.render_widget(table, chunks[1]);
 }
 
 fn render_main_panel_for_solution_input(frame: &mut Frame, state: &AppState, rect: Rect) {
@@ -259,4 +250,18 @@ fn render_main_panel_for_solution_input(frame: &mut Frame, state: &AppState, rec
 
         return;
     }
+
+    let error = Paragraph::new("The solution is invalid")
+        .alignment(ratatui::layout::Alignment::Center)
+        .block(Block::default().borders(Borders::ALL));
+    let vertical_padding = chunks[1].height.saturating_sub(3) / 2;
+    let centered = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([
+            Constraint::Length(vertical_padding),
+            Constraint::Length(3),
+            Constraint::Min(0),
+        ])
+        .split(chunks[1]);
+    frame.render_widget(error, centered[1]);
 }

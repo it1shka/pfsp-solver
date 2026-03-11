@@ -1,12 +1,13 @@
 use pfsp_solver::solver::problem::Problem;
 
-use crate::tui::components::input::InputState;
+use crate::tui::components::{input::InputState, matrix::MatrixState};
 
 pub struct AppState<'a> {
     pub problem: &'a Problem,
     pub is_running: bool,
     pub screen: AppScreen,
     pub solution_input: InputState,
+    pub matrix: MatrixState,
 }
 
 #[derive(Clone, Copy, PartialEq)]
@@ -55,6 +56,7 @@ impl<'a> AppState<'a> {
             is_running: true,
             screen: AppScreen::ProblemInstance,
             solution_input: InputState::new(),
+            matrix: MatrixState::new(),
         }
     }
 
@@ -64,6 +66,17 @@ impl<'a> AppState<'a> {
             AppEvent::PrevScreen => self.screen = self.screen.prev_screen(),
             AppEvent::Close => self.is_running = false,
             _ => match self.screen {
+                AppScreen::ProblemInstance => match event {
+                    AppEvent::AddSymbol('h') => self.matrix.move_left(),
+                    AppEvent::AddSymbol('l') => {
+                        self.matrix.move_right(self.problem.jobs_number);
+                    }
+                    AppEvent::AddSymbol('k') => self.matrix.move_up(),
+                    AppEvent::AddSymbol('j') => {
+                        self.matrix.move_down(self.problem.machines_number);
+                    }
+                    _ => {}
+                },
                 AppScreen::CurrentSolution => match event {
                     AppEvent::DeleteSymbol => {
                         self.solution_input.remove_symbol();
