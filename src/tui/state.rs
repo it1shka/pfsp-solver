@@ -1,10 +1,12 @@
 use pfsp_solver::solver::problem::Problem;
 
+use crate::tui::components::input::InputState;
+
 pub struct AppState<'a> {
     pub problem: &'a Problem,
     pub is_running: bool,
     pub screen: AppScreen,
-    pub raw_solution: String,
+    pub solution_input: InputState,
 }
 
 #[derive(Clone, Copy, PartialEq)]
@@ -41,6 +43,8 @@ pub enum AppEvent {
     PrevScreen,
     NextScreen,
     DeleteSymbol,
+    CursorLeft,
+    CursorRight,
     AddSymbol(char),
 }
 
@@ -50,7 +54,7 @@ impl<'a> AppState<'a> {
             problem: problem,
             is_running: true,
             screen: AppScreen::ProblemInstance,
-            raw_solution: String::new(),
+            solution_input: InputState::new(),
         }
     }
 
@@ -62,10 +66,16 @@ impl<'a> AppState<'a> {
             _ => match self.screen {
                 AppScreen::CurrentSolution => match event {
                     AppEvent::DeleteSymbol => {
-                        self.raw_solution.pop();
+                        self.solution_input.remove_symbol();
                     }
                     AppEvent::AddSymbol(symbol) => {
-                        self.raw_solution.push(symbol);
+                        self.solution_input.add_symbol(symbol);
+                    }
+                    AppEvent::CursorLeft => {
+                        self.solution_input.cursor_left();
+                    }
+                    AppEvent::CursorRight => {
+                        self.solution_input.cursor_right();
                     }
                     _ => {}
                 },

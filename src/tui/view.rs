@@ -1,17 +1,17 @@
 use std::{io, time::Duration};
 
 use crossterm::event::{self, Event, KeyCode};
+use pfsp_solver::solver::solution::Solution;
 use ratatui::{
     Frame, Terminal,
     layout::{Constraint, Direction, Layout, Rect},
     prelude::Backend,
     style::{Color, Style},
-    widgets::{Block, Borders, Cell, List, ListItem, Paragraph, Row, Table, Wrap},
+    widgets::{Block, Borders, Cell, List, ListItem, Paragraph, Row, Table},
 };
 
 use crate::tui::{
-    gantt::render_gantt_chart,
-    helpers::parse_solution,
+    components::{gantt::render_gantt_chart, input::render_input},
     state::{AppEvent, AppScreen, AppState},
 };
 
@@ -45,6 +45,8 @@ fn read_app_event() -> io::Result<Option<AppEvent>> {
             KeyCode::Backspace => Some(AppEvent::DeleteSymbol),
             KeyCode::Up => Some(AppEvent::PrevScreen),
             KeyCode::Down => Some(AppEvent::NextScreen),
+            KeyCode::Left => Some(AppEvent::CursorLeft),
+            KeyCode::Right => Some(AppEvent::CursorRight),
             _ => key.code.as_char().map(|symbol| AppEvent::AddSymbol(symbol)),
         },
         _ => None,
@@ -121,17 +123,13 @@ fn render_problem_description(frame: &mut Frame, state: &AppState, rect: Rect) {
 }
 
 fn render_solution_input(frame: &mut Frame, state: &AppState, rect: Rect) {
-    let mut input_value = state.raw_solution.clone();
-    if state.screen == AppScreen::CurrentSolution {
-        input_value.push('_');
-    }
-    let input_p = Paragraph::new(input_value).block(
-        Block::default()
-            .title("Current Solution")
-            .borders(Borders::ALL)
-            .border_style(style_for_screen(AppScreen::CurrentSolution, state)),
+    render_input(
+        "Current Solution",
+        state.screen == AppScreen::CurrentSolution,
+        frame,
+        &state.solution_input,
+        rect,
     );
-    frame.render_widget(input_p, rect);
 }
 
 fn render_algorithms(frame: &mut Frame, state: &AppState, rect: Rect) {
@@ -229,19 +227,18 @@ fn render_main_panel_for_solution_input(frame: &mut Frame, state: &AppState, rec
         .constraints([Constraint::Length(5), Constraint::Min(0)])
         .split(rect);
 
-    let input_p = Paragraph::new(format!("{}_", state.raw_solution))
-        .wrap(Wrap { trim: false })
-        .block(
-            Block::default()
-                .title("Current Solution")
-                .borders(Borders::ALL),
-        );
-    frame.render_widget(input_p, chunks[0]);
+    render_input(
+        "Current Solution",
+        false,
+        frame,
+        &state.solution_input,
+        chunks[0],
+    );
 
-    let parsed_solution = parse_solution(&state.raw_solution);
+    let parsed_solution = Solution::parse(&state.solution_input.value);
 
     if let Some(solution) = parsed_solution
-        && solution.is_valid(state.problem.jobs_number)
+        && solution.is_loosely_valid(state.problem.jobs_number)
     {
         let total_flow_time = solution.total_flow_time(&state.problem.processing_times);
         let graph_data = solution.graph_data(&state.problem.processing_times);

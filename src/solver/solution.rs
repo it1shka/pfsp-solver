@@ -9,10 +9,16 @@ impl Solution {
         Solution(vec![])
     }
 
-    pub fn is_valid(&self, jobs_amount: usize) -> bool {
-        if self.0.len() != jobs_amount {
-            return false;
-        }
+    pub fn parse(raw_solution: &str) -> Option<Solution> {
+        raw_solution
+            .split_whitespace()
+            .map(|chunk| str::parse::<usize>(chunk))
+            .collect::<Result<Vec<_>, _>>()
+            .ok()
+            .map(|result| Solution(result))
+    }
+
+    pub fn is_loosely_valid(&self, jobs_amount: usize) -> bool {
         let mut set = HashSet::new();
         for nth in &self.0 {
             if *nth >= jobs_amount || !set.insert(*nth) {
@@ -20,6 +26,13 @@ impl Solution {
             }
         }
         true
+    }
+
+    pub fn is_valid(&self, jobs_amount: usize) -> bool {
+        if self.0.len() != jobs_amount {
+            return false;
+        }
+        self.is_loosely_valid(jobs_amount)
     }
 
     pub fn total_flow_time(&self, processing_times: &[Vec<Time>]) -> Time {
