@@ -1,14 +1,18 @@
 use std::{cmp::max, collections::HashSet};
 
-use rand::{SeedableRng, rngs::StdRng, seq::SliceRandom};
+use rand::seq::SliceRandom;
 
-use crate::solver::problem::Time;
+use crate::solver::{helpers::get_rng, problem::Time};
 
 pub struct Solution(pub Vec<usize>);
 
 impl Solution {
     pub fn empty() -> Self {
         Solution(vec![])
+    }
+
+    pub fn new(value: Vec<usize>) -> Self {
+        Solution(value)
     }
 
     pub fn parse(raw_solution: &str) -> Option<Self> {
@@ -20,14 +24,8 @@ impl Solution {
             .map(|result| Solution(result))
     }
 
-    pub fn generate_random(jobs_amount: usize) -> Self {
-        let mut solution = (0..jobs_amount).collect::<Vec<usize>>();
-        solution.shuffle(&mut rand::rng());
-        Solution(solution)
-    }
-
-    pub fn generate_from_seed(jobs_amount: usize, seed: u64) -> Self {
-        let mut rng = StdRng::seed_from_u64(seed);
+    pub fn random(jobs_amount: usize, maybe_seed: Option<u64>) -> Self {
+        let mut rng = get_rng(maybe_seed);
         let mut solution = (0..jobs_amount).collect::<Vec<usize>>();
         solution.shuffle(&mut rng);
         Solution(solution)
