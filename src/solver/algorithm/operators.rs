@@ -1,15 +1,17 @@
+use rand::{Rng, RngExt};
+
 use crate::solver::solution::Solution;
 
 pub trait Operator {
     fn probability(&self) -> f32;
 }
 
-pub trait UnaryOperator: Operator {
-    fn mutate(&self, s1: &mut Solution);
+pub trait UnaryOperator<R: Rng>: Operator {
+    fn mutate(&self, rng: &mut R, s1: &mut Solution);
 }
 
-pub trait BinaryOperator: Operator {
-    fn mutate(&self, s1: &mut Solution, s2: &Solution);
+pub trait BinaryOperator<R: Rng>: Operator {
+    fn mutate(&self, rng: &mut R, s1: &mut Solution, s2: &Solution);
 }
 
 macro_rules! define_operator {
@@ -27,37 +29,61 @@ macro_rules! define_operator {
     };
 }
 
+define_operator!(SimpleCrossover);
+impl<R: Rng> BinaryOperator<R> for SimpleCrossover {
+    fn mutate(&self, rng: &mut R, s1: &mut Solution, s2: &Solution) {
+        let split = rng.random_range(0..s1.len());
+        let direction = rng.random_bool(0.5);
+        if direction {
+            s1.data[split..].copy_from_slice(&s2.data[split..]);
+        } else {
+            s1.data[..split].copy_from_slice(&s2.data[..split]);
+        }
+    }
+}
+
 define_operator!(OrderedCrossover);
-impl BinaryOperator for OrderedCrossover {
-    fn mutate(&self, s1: &mut Solution, s2: &Solution) {
+impl<R: Rng> BinaryOperator<R> for OrderedCrossover {
+    fn mutate(&self, rng: &mut R, s1: &mut Solution, s2: &Solution) {
         todo!()
     }
 }
 
 define_operator!(PartiallyMatchedCrossover);
-impl BinaryOperator for PartiallyMatchedCrossover {
-    fn mutate(&self, s1: &mut Solution, s2: &Solution) {
+impl<R: Rng> BinaryOperator<R> for PartiallyMatchedCrossover {
+    fn mutate(&self, rng: &mut R, s1: &mut Solution, s2: &Solution) {
         todo!()
     }
 }
 
 define_operator!(CycleCrossover);
-impl BinaryOperator for CycleCrossover {
-    fn mutate(&self, s1: &mut Solution, s2: &Solution) {
+impl<R: Rng> BinaryOperator<R> for CycleCrossover {
+    fn mutate(&self, rng: &mut R, s1: &mut Solution, s2: &Solution) {
         todo!()
     }
 }
 
 define_operator!(SwapMutation);
-impl UnaryOperator for SwapMutation {
-    fn mutate(&self, s1: &mut Solution) {
-        todo!()
+impl<R: Rng> UnaryOperator<R> for SwapMutation {
+    fn mutate(&self, rng: &mut R, s1: &mut Solution) {
+        let idx1 = rng.random_range(0..s1.len());
+        let mut idx2 = rng.random_range(0..(s1.len() - 1));
+        if idx2 >= idx1 {
+            idx2 += 1;
+        }
+        let temp = s1.data[idx1];
+        s1.data[idx1] = s1.data[idx2];
+        s1.data[idx2] = temp;
     }
 }
 
 define_operator!(InversionMutation);
-impl UnaryOperator for InversionMutation {
-    fn mutate(&self, s1: &mut Solution) {
+impl<R: Rng> UnaryOperator<R> for InversionMutation {
+    fn mutate(&self, rng: &mut R, s1: &mut Solution) {
+        let p1 = rng.random_range(0..s1.len() - 1);
+        let p2 = rng.random_range((p1 + 1)..s1.len());
+        // let inversed = s1.data[p1..p2].into_iter
+        // s1.data[p1..p2].copy_from_slice
         todo!()
     }
 }

@@ -1,18 +1,20 @@
 use std::{cmp::max, collections::HashSet};
 
-use rand::seq::SliceRandom;
+use rand::{Rng, seq::SliceRandom};
 
-use crate::solver::{helpers::get_rng, problem::Time};
+use crate::solver::problem::Time;
 
-pub struct Solution(pub Vec<usize>);
+pub struct Solution {
+    pub data: Vec<usize>,
+}
 
 impl Solution {
     pub fn empty() -> Self {
-        Solution(vec![])
+        Solution { data: vec![] }
     }
 
     pub fn new(value: Vec<usize>) -> Self {
-        Solution(value)
+        Solution { data: value }
     }
 
     pub fn parse(raw_solution: &str) -> Option<Self> {
@@ -21,19 +23,22 @@ impl Solution {
             .map(|chunk| str::parse::<usize>(chunk))
             .collect::<Result<Vec<_>, _>>()
             .ok()
-            .map(|result| Solution(result))
+            .map(|result| Solution { data: result })
     }
 
-    pub fn random(jobs_amount: usize, maybe_seed: Option<u64>) -> Self {
-        let mut rng = get_rng(maybe_seed);
+    pub fn random<R: Rng>(rng: &mut R, jobs_amount: usize) -> Self {
         let mut solution = (0..jobs_amount).collect::<Vec<usize>>();
-        solution.shuffle(&mut rng);
-        Solution(solution)
+        solution.shuffle(rng);
+        Solution { data: solution }
+    }
+
+    pub fn len(&self) -> usize {
+        self.data.len()
     }
 
     pub fn is_loosely_valid(&self, jobs_amount: usize) -> bool {
         let mut set = HashSet::new();
-        for nth in &self.0 {
+        for nth in &self.data {
             if *nth >= jobs_amount || !set.insert(*nth) {
                 return false;
             }
@@ -42,7 +47,7 @@ impl Solution {
     }
 
     pub fn is_valid(&self, jobs_amount: usize) -> bool {
-        if self.0.len() != jobs_amount {
+        if self.data.len() != jobs_amount {
             return false;
         }
         self.is_loosely_valid(jobs_amount)
@@ -52,7 +57,7 @@ impl Solution {
         let machines_number = processing_times.len();
         let mut clock = vec![0; machines_number];
         let mut total_time: Time = 0;
-        for nth_job in &self.0 {
+        for nth_job in &self.data {
             let mut running_clock = clock[0];
             for nth_machine in 0..machines_number {
                 running_clock = max(clock[nth_machine], running_clock)
@@ -68,7 +73,7 @@ impl Solution {
         let machines_number = processing_times.len();
         let mut clock = vec![0; machines_number];
         let mut data = vec![vec![]; machines_number];
-        for nth_job in &self.0 {
+        for nth_job in &self.data {
             let mut running_clock = clock[0];
             for nth_machine in 0..machines_number {
                 let time_start = max(clock[nth_machine], running_clock);

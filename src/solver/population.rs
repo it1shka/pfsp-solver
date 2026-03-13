@@ -1,28 +1,29 @@
-use rand::seq::SliceRandom;
+use rand::{Rng, seq::SliceRandom};
 
-use crate::solver::{helpers::get_rng, solution::Solution};
+use crate::solver::solution::Solution;
 
-pub struct Population(pub Vec<Solution>);
+pub struct Population {
+    pub data: Vec<Solution>,
+}
 
 impl Population {
     pub fn empty() -> Self {
-        Self(vec![])
+        Self { data: vec![] }
     }
 
     pub fn new(value: Vec<Solution>) -> Self {
-        Self(value)
+        Self { data: value }
     }
 
-    pub fn random(population_size: usize, jobs_amount: usize, maybe_seed: Option<u64>) -> Self {
-        let mut rng = get_rng(maybe_seed);
+    pub fn random<R: Rng>(rng: &mut R, population_size: usize, jobs_amount: usize) -> Self {
         let mut range = (0..jobs_amount).collect::<Vec<usize>>();
-        Self(
-            (0..population_size)
+        Self {
+            data: (0..population_size)
                 .map(|_| {
-                    range.shuffle(&mut rng);
+                    range.shuffle(rng);
                     Solution::new(range.clone())
                 })
                 .collect(),
-        )
+        }
     }
 }
