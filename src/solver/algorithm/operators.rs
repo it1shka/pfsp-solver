@@ -81,7 +81,27 @@ impl<R: Rng> BinaryOperator<R> for PartiallyMatchedCrossover {
 define_operator!(CycleCrossover);
 impl<R: Rng> BinaryOperator<R> for CycleCrossover {
     fn mutate(&self, rng: &mut R, s1: &mut Solution, s2: &Solution) {
-        todo!()
+        let n = s1.len();
+        let mut visited = vec![false; n];
+        let mut copy_flag = rng.random_bool(0.5);
+        let mut s1_positions = vec![0; n];
+        for (i, &v) in s1.data.iter().enumerate() {
+            s1_positions[v] = i;
+        }
+        for i in 0..n {
+            if visited[i] {
+                continue;
+            }
+            let mut cycle_pointer = i;
+            while !visited[cycle_pointer] {
+                visited[cycle_pointer] = true;
+                if copy_flag {
+                    s1.data[cycle_pointer] = s2.data[cycle_pointer];
+                }
+                cycle_pointer = s1_positions[s2.data[cycle_pointer]];
+            }
+            copy_flag = !copy_flag;
+        }
     }
 }
 
