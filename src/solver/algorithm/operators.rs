@@ -1,10 +1,9 @@
-use std::collections::HashSet;
-
 use rand::{Rng, RngExt};
 
 use crate::solver::solution::Solution;
 
 pub trait Operator {
+    fn name(&self) -> &'static str;
     fn probability(&self) -> f32;
 }
 
@@ -17,13 +16,16 @@ pub trait BinaryOperator<R: Rng>: Operator {
 }
 
 macro_rules! define_operator {
-    ($op_name:ident) => {
+    ($op_name:ident, $op_str_name:expr) => {
         #[derive(Clone, Copy)]
         pub struct $op_name {
             p: f32,
         }
 
         impl Operator for $op_name {
+            fn name(&self) -> &'static str {
+                $op_str_name
+            }
             fn probability(&self) -> f32 {
                 self.p
             }
@@ -31,7 +33,7 @@ macro_rules! define_operator {
     };
 }
 
-define_operator!(OrderedCrossover);
+define_operator!(OrderedCrossover, "Ordered Crossover");
 impl<R: Rng> BinaryOperator<R> for OrderedCrossover {
     fn mutate(&self, rng: &mut R, s1: &mut Solution, s2: &Solution) {
         let n = s1.len();
@@ -55,7 +57,7 @@ impl<R: Rng> BinaryOperator<R> for OrderedCrossover {
     }
 }
 
-define_operator!(PartiallyMatchedCrossover);
+define_operator!(PartiallyMatchedCrossover, "Partially Matched Crossover");
 impl<R: Rng> BinaryOperator<R> for PartiallyMatchedCrossover {
     fn mutate(&self, rng: &mut R, s1: &mut Solution, s2: &Solution) {
         let n = s1.len();
@@ -78,7 +80,7 @@ impl<R: Rng> BinaryOperator<R> for PartiallyMatchedCrossover {
     }
 }
 
-define_operator!(CycleCrossover);
+define_operator!(CycleCrossover, "Cycle Crossover");
 impl<R: Rng> BinaryOperator<R> for CycleCrossover {
     fn mutate(&self, rng: &mut R, s1: &mut Solution, s2: &Solution) {
         let n = s1.len();
@@ -105,7 +107,7 @@ impl<R: Rng> BinaryOperator<R> for CycleCrossover {
     }
 }
 
-define_operator!(SwapMutation);
+define_operator!(SwapMutation, "Swap Mutation");
 impl<R: Rng> UnaryOperator<R> for SwapMutation {
     fn mutate(&self, rng: &mut R, s1: &mut Solution) {
         let idx1 = rng.random_range(0..s1.len());
@@ -119,7 +121,7 @@ impl<R: Rng> UnaryOperator<R> for SwapMutation {
     }
 }
 
-define_operator!(InversionMutation);
+define_operator!(InversionMutation, "Inversion Mutation");
 impl<R: Rng> UnaryOperator<R> for InversionMutation {
     fn mutate(&self, rng: &mut R, s1: &mut Solution) {
         let p1 = rng.random_range(0..s1.len() - 1);

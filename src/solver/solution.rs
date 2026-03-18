@@ -8,6 +8,14 @@ pub struct Solution {
     pub data: Vec<usize>,
 }
 
+impl Clone for Solution {
+    fn clone(&self) -> Self {
+        Self {
+            data: self.data.clone(),
+        }
+    }
+}
+
 impl Solution {
     pub fn empty() -> Self {
         Solution { data: vec![] }

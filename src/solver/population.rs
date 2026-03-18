@@ -6,6 +6,8 @@ pub struct Population {
     pub data: Vec<Solution>,
 }
 
+pub const MIN_POPULATION_SIZE: usize = 4;
+
 impl Population {
     pub fn empty() -> Self {
         Self { data: vec![] }
@@ -25,5 +27,25 @@ impl Population {
                 })
                 .collect(),
         }
+    }
+
+    pub fn is_valid(&self) -> bool {
+        self.len() >= MIN_POPULATION_SIZE
+    }
+
+    pub fn len(&self) -> usize {
+        self.data.len()
+    }
+
+    pub fn push(&mut self, solution: Solution) {
+        self.data.push(solution);
+    }
+
+    pub fn extend(&mut self, batch: Vec<Solution>) {
+        self.data.extend(batch);
+    }
+
+    pub fn clear(&mut self) {
+        self.data.clear();
     }
 }
