@@ -48,4 +48,8 @@ impl Population {
     pub fn clear(&mut self) {
         self.data.clear();
     }
+
+    pub fn p_count(&self, p: f32) -> usize {
+        (p * self.len() as f32).round() as usize
+    }
 }

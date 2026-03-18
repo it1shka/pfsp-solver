@@ -12,6 +12,9 @@ pub struct Problem {
     pub processing_times: Vec<Vec<Time>>,
 }
 
+pub const MIN_JOBS_NUMBER: usize = 1;
+pub const MIN_MACHINES_NUMBER: usize = 1;
+
 impl Problem {
     pub fn parse<R: io::Read>(source: R) -> io::Result<Problem> {
         macro_rules! parser_err {
@@ -117,5 +120,9 @@ impl Problem {
             lower_bound: lower_bound,
             processing_times: processing_times,
         })
+    }
+
+    pub fn is_valid(&self) -> bool {
+        (self.jobs_number >= MIN_JOBS_NUMBER) && (self.machines_number >= MIN_MACHINES_NUMBER)
     }
 }
