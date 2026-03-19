@@ -4,16 +4,9 @@ use rand::{Rng, seq::SliceRandom};
 
 use crate::solver::problem::Time;
 
+#[derive(Clone, Hash)]
 pub struct Solution {
     pub data: Vec<usize>,
-}
-
-impl Clone for Solution {
-    fn clone(&self) -> Self {
-        Self {
-            data: self.data.clone(),
-        }
-    }
 }
 
 impl Solution {
@@ -91,11 +84,5 @@ impl Solution {
             }
         }
         data
-    }
-}
-
-impl Hash for Solution {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        self.data.hash(state)
     }
 }

@@ -115,9 +115,7 @@ impl<R: Rng> UnaryOperator<R> for SwapMutation {
         if idx2 >= idx1 {
             idx2 += 1;
         }
-        let temp = s1.data[idx1];
-        s1.data[idx1] = s1.data[idx2];
-        s1.data[idx2] = temp;
+        s1.data.swap(idx1, idx2);
     }
 }
 

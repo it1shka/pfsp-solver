@@ -12,8 +12,8 @@ pub struct Problem {
     pub processing_times: Vec<Vec<Time>>,
 }
 
-pub const MIN_JOBS_NUMBER: usize = 1;
-pub const MIN_MACHINES_NUMBER: usize = 1;
+pub const MIN_JOBS_NUMBER: usize = 2;
+pub const MIN_MACHINES_NUMBER: usize = 2;
 
 impl Problem {
     pub fn parse<R: io::Read>(source: R) -> io::Result<Problem> {
@@ -59,20 +59,16 @@ impl Problem {
             usize,
             "Parameter for jobs number should be an unsigned integer"
         );
-        if jobs_number < 1 {
-            return Err(parser_err!(
-                "Parameter for jobs number should be a positive number"
-            ));
+        if jobs_number < MIN_JOBS_NUMBER {
+            return Err(parser_err!("Parameter for jobs number is too small"));
         }
         let machines_number = required_param!(
             1,
             usize,
             "Parameter for machines number should be an unsigned integer"
         );
-        if machines_number < 1 {
-            return Err(parser_err!(
-                "Parameter for machines number should be a positive number"
-            ));
+        if machines_number < MIN_MACHINES_NUMBER {
+            return Err(parser_err!("Parameter for machines number is too small"));
         }
         let initial_seed = optional_param!(
             2,
