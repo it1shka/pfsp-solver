@@ -1,4 +1,4 @@
-use std::{cmp::max, collections::HashSet};
+use std::{cmp::max, collections::HashSet, hash::Hash};
 
 use rand::{Rng, seq::SliceRandom};
 
@@ -91,5 +91,11 @@ impl Solution {
             }
         }
         data
+    }
+}
+
+impl Hash for Solution {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.data.hash(state)
     }
 }

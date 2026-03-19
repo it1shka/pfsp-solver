@@ -1,4 +1,4 @@
-use std::{cmp::Reverse, collections::HashMap, mem};
+use std::{collections::HashMap, mem};
 
 use rand::{Rng, seq::IndexedMutRandom};
 
@@ -7,6 +7,7 @@ use crate::solver::{
         operators::{BinaryOperator, UnaryOperator},
         selectors::Selector,
     },
+    evaluator::Evaluator,
     helpers::select_idx_pair,
     population::Population,
     problem::Time,
@@ -39,11 +40,10 @@ impl EvolutionStats {
 
 pub struct GeneticAlgorithm<R: Rng> {
     rng: R,
-    evaluate: fn(&Solution) -> Time,
-    eval_cache: Vec<Time>,
     next_population: Population,
-    stats: EvolutionStats,
+    pub stats: EvolutionStats,
     pub population: Population,
+    pub evaluator: Box<dyn Evaluator>,
     pub selection: Box<dyn Selector<R>>,
     pub elite_p: f32,
     pub binary_ops: Vec<Box<dyn BinaryOperator<R>>>,
@@ -53,8 +53,8 @@ pub struct GeneticAlgorithm<R: Rng> {
 impl<R: Rng> GeneticAlgorithm<R> {
     pub fn new(
         rng: R,
-        evaluate: fn(&Solution) -> Time,
         population: Population,
+        evaluator: Box<dyn Evaluator>,
         selection: Box<dyn Selector<R>>,
         elite_p: f32,
         binary_ops: Vec<Box<dyn BinaryOperator<R>>>,
@@ -62,11 +62,10 @@ impl<R: Rng> GeneticAlgorithm<R> {
     ) -> Self {
         Self {
             rng: rng,
-            evaluate: evaluate,
-            eval_cache: vec![],
             next_population: Population::empty(),
             stats: EvolutionStats::new(),
             population: population,
+            evaluator,
             selection: selection,
             elite_p: elite_p,
             binary_ops: binary_ops,
@@ -76,19 +75,17 @@ impl<R: Rng> GeneticAlgorithm<R> {
 
     // helper functions
 
-    fn population_iter(&self) -> impl Iterator<Item = (&Solution, Time)> {
+    fn population_iter(&mut self) -> impl Iterator<Item = (&Solution, Time)> {
         self.population
             .data
             .iter()
-            .enumerate()
-            .map(|(i, s)| (s, self.eval_cache[i]))
+            .map(|s| (s, self.evaluator.evaluate(s)))
     }
 
     // main cycle
 
     pub fn evolution_cycle(&mut self) {
         self.reset_before_evolution_cycle();
-        self.evaluate_population();
         self.select_elite();
         self.select_parents();
         self.perform_binary_ops();
@@ -97,16 +94,8 @@ impl<R: Rng> GeneticAlgorithm<R> {
     }
 
     fn reset_before_evolution_cycle(&mut self) {
-        self.eval_cache.clear();
         self.next_population.clear();
         self.stats.clear();
-    }
-
-    fn evaluate_population(&mut self) {
-        for s in &self.population.data {
-            let evaluation = (self.evaluate)(s);
-            self.eval_cache.push(evaluation);
-        }
     }
 
     fn select_elite(&mut self) {
@@ -125,9 +114,9 @@ impl<R: Rng> GeneticAlgorithm<R> {
 
     fn select_parents(&mut self) {
         while self.next_population.len() < self.population.len() {
-            let parent = self
-                .selection
-                .select(&mut self.rng, &mut self.population, self.evaluate);
+            let parent =
+                self.selection
+                    .select(&mut self.rng, &mut self.population, self.evaluator.as_mut());
             self.next_population.push(parent.clone());
         }
     }
@@ -179,7 +168,7 @@ impl<R: Rng> GeneticAlgorithm<R> {
             .population
             .data
             .iter()
-            .map(|s| (self.evaluate)(s))
+            .map(|s| self.evaluator.evaluate(s))
             .min()
             .unwrap();
         self.stats.best_time = best_result;
