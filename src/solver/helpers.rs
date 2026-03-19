@@ -18,3 +18,16 @@ pub fn select_idx_pair<R: Rng>(rng: &mut R, range: Range<usize>) -> (usize, usiz
     }
     (p1, p2)
 }
+
+pub fn select_roulette<'a, R: Rng, T>(rng: &mut R, items: &'a [(T, f32)]) -> &'a T {
+    let total_weight: f32 = items.iter().map(|&(_, w)| w).sum();
+    let mut toss = rng.random_range(0.0..total_weight);
+    for (item, weight) in items.iter() {
+        toss -= weight;
+        if toss <= 0.0 {
+            return item;
+        }
+    }
+    let (item, _) = items.last().unwrap();
+    item
+}
