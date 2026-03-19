@@ -61,15 +61,15 @@ impl<R: Rng> GeneticAlgorithm<R> {
         unary_ops: Vec<Box<dyn UnaryOperator<R>>>,
     ) -> Self {
         Self {
-            rng: rng,
+            rng,
             next_population: Population::empty(),
             stats: EvolutionStats::new(),
-            population: population,
+            population,
             evaluator,
-            selection: selection,
-            elite_p: elite_p,
-            binary_ops: binary_ops,
-            unary_ops: unary_ops,
+            selection,
+            elite_p,
+            binary_ops,
+            unary_ops,
         }
     }
 
@@ -116,7 +116,7 @@ impl<R: Rng> GeneticAlgorithm<R> {
         while self.next_population.len() < self.population.len() {
             let parent =
                 self.selection
-                    .select(&mut self.rng, &mut self.population, self.evaluator.as_mut());
+                    .select(&mut self.rng, &self.population, self.evaluator.as_mut());
             self.next_population.push(parent.clone());
         }
     }

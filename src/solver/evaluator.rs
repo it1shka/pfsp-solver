@@ -18,7 +18,7 @@ impl<'a> TFTEvaluator<'a> {
     pub fn new(processing_times: &'a [Vec<Time>]) -> Self {
         Self {
             cache: HashMap::new(),
-            processing_times: processing_times,
+            processing_times,
         }
     }
 

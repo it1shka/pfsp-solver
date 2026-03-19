@@ -47,7 +47,7 @@ fn read_app_event() -> io::Result<Option<AppEvent>> {
             KeyCode::Down => Some(AppEvent::NextScreen),
             KeyCode::Left => Some(AppEvent::CursorLeft),
             KeyCode::Right => Some(AppEvent::CursorRight),
-            _ => key.code.as_char().map(|symbol| AppEvent::AddSymbol(symbol)),
+            _ => key.code.as_char().map(AppEvent::AddSymbol),
         },
         _ => None,
     };

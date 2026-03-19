@@ -109,12 +109,12 @@ impl Problem {
             processing_times.push(machine_processing_times)
         }
         Ok(Problem {
-            jobs_number: jobs_number,
-            machines_number: machines_number,
-            initial_seed: initial_seed,
-            upper_bound: upper_bound,
-            lower_bound: lower_bound,
-            processing_times: processing_times,
+            jobs_number,
+            machines_number,
+            initial_seed,
+            upper_bound,
+            lower_bound,
+            processing_times,
         })
     }
 

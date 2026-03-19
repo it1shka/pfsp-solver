@@ -52,7 +52,7 @@ pub enum AppEvent {
 impl<'a> AppState<'a> {
     pub fn new(problem: &'a Problem) -> Self {
         AppState {
-            problem: problem,
+            problem,
             is_running: true,
             screen: AppScreen::ProblemInstance,
             solution_input: InputState::new(),

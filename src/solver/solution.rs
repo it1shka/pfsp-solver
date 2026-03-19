@@ -21,7 +21,7 @@ impl Solution {
     pub fn parse(raw_solution: &str) -> Option<Self> {
         raw_solution
             .split_whitespace()
-            .map(|chunk| str::parse::<usize>(chunk))
+            .map(str::parse::<usize>)
             .collect::<Result<Vec<_>, _>>()
             .ok()
             .map(|result| Solution { data: result })
