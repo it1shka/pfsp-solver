@@ -113,7 +113,7 @@ impl<R: Rng> GeneticAlgorithm<R> {
         let elite_count = self.population.p_count(self.elite_p);
         let elite = {
             let mut rated_population = self.population_iter().collect::<Vec<_>>();
-            rated_population.sort_by_key(|&(_, time)| Reverse(time));
+            rated_population.sort_by_key(|&(_, time)| time);
             rated_population
                 .into_iter()
                 .take(elite_count)
@@ -136,14 +136,27 @@ impl<R: Rng> GeneticAlgorithm<R> {
         self.binary_ops.iter().for_each(|op| {
             let effect_count = self.next_population.p_count(op.probability());
             for _ in 0..effect_count {
-                let (idx1, idx2) =
-                    select_idx_pair(&mut self.rng, 0..(self.next_population.len() - 1));
+                let (idx1, idx2) = select_idx_pair(&mut self.rng, 0..self.next_population.len());
+
+                // More readable but not idiomatic
+                /*
                 unsafe {
                     let population = self.next_population.data.as_mut_ptr();
                     let p1 = &mut *population.add(idx1);
                     let p2 = &*population.add(idx2);
                     op.mutate(&mut self.rng, p1, p2);
                 }
+                */
+
+                let data = &mut self.next_population.data;
+                let (p1, p2) = if idx1 < idx2 {
+                    let (left, right) = data.split_at_mut(idx2);
+                    (&mut left[idx1], &right[0])
+                } else {
+                    let (left, right) = data.split_at_mut(idx1);
+                    (&mut right[0], &left[idx2])
+                };
+                op.mutate(&mut self.rng, p1, p2);
             }
             self.stats.increase_operator_usage(op.name(), effect_count);
         });
