@@ -120,9 +120,10 @@ pub fn render_matrix(frame: &mut Frame, rect: Rect, data: &[Vec<Time>], state: &
     });
 
     let widths: Vec<_> = std::iter::once(ratatui::layout::Constraint::Length(ROW_LABEL_WIDTH))
-        .chain(
-            std::iter::repeat_n(ratatui::layout::Constraint::Length(COL_WIDTH), col_end - col_start),
-        )
+        .chain(std::iter::repeat_n(
+            ratatui::layout::Constraint::Length(COL_WIDTH),
+            col_end - col_start,
+        ))
         .collect();
 
     let table = Table::new(rows, widths).header(header).block(block);
