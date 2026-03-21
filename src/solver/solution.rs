@@ -37,6 +37,14 @@ impl Solution {
         self.data.len()
     }
 
+    pub fn push(&mut self, job: usize) {
+        self.data.push(job);
+    }
+
+    pub fn pop(&mut self) -> Option<usize> {
+        self.data.pop()
+    }
+
     pub fn is_loosely_valid(&self, jobs_amount: usize) -> bool {
         let mut set = HashSet::new();
         for nth in &self.data {
