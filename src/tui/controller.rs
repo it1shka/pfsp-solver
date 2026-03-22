@@ -1,7 +1,7 @@
-use std::io;
+use std::{io, time::Duration};
 
 use crossterm::{
-    event::{DisableMouseCapture, EnableMouseCapture},
+    event::{self, DisableMouseCapture, EnableMouseCapture},
     execute,
     terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
 };
@@ -68,17 +68,23 @@ where
     Ok(())
 }
 
+const EVENT_POLL_INTERVAL_MS: u64 = 33;
+
 async fn handle_keyboard_events(tx: UnboundedSender<AppEvent>, token: CancellationToken) {
     loop {
         tokio::select! {
-            _ = token.cancelled() => break,
-            maybe_event = tokio::task::spawn_blocking(|| AppEvent::read().ok().flatten()) => {
-                if let Ok(Some(event)) = maybe_event {
-                    if tx.send(event).is_err() {
-                        break;
+                    _ = token.cancelled() => break,
+                    maybe_event = tokio::task::spawn_blocking(|| {
+        event::poll(Duration::from_millis(EVENT_POLL_INTERVAL_MS))
+                .unwrap_or(false)
+                .then(|| AppEvent::read().ok().flatten()).flatten()
+                    }) => {
+                        if let Ok(Some(event)) = maybe_event {
+                            if tx.send(event).is_err() {
+                                break;
+                            }
+                        }
                     }
                 }
-            }
-        }
     }
 }
