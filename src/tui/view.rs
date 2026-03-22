@@ -1,77 +1,38 @@
-use std::{io, time::Duration};
-
-use crossterm::event::{self, Event, KeyCode};
 use pfsp_solver::solver::solution::Solution;
 use ratatui::{
-    Frame, Terminal,
+    Frame,
     layout::{Constraint, Direction, Layout, Rect},
-    prelude::Backend,
     style::{Color, Style},
     widgets::{Block, Borders, List, ListItem, Paragraph},
 };
 
 use crate::tui::{
     components::{gantt::render_gantt_chart, input::render_input, matrix::render_matrix},
-    state::{AppEvent, AppScreen, AppState},
+    model::{model::AppModel, screen::AppScreen},
 };
 
-const EVENT_POLL_TIME: u64 = 33;
-
-pub fn render_loop<B: Backend>(
-    terminal: &mut Terminal<B>,
-    state: &mut AppState,
-) -> color_eyre::Result<()>
-where
-    color_eyre::Report: From<B::Error>,
-{
-    while state.is_running {
-        terminal.draw(|frame| {
-            render_frame(frame, state);
-        })?;
-        if event::poll(Duration::from_millis(EVENT_POLL_TIME))? {
-            let maybe_event = read_app_event()?;
-            if let Some(event) = maybe_event {
-                state.update_on_event(event);
-            }
-        }
-    }
-    Ok(())
-}
-
-fn read_app_event() -> io::Result<Option<AppEvent>> {
-    let app_event = match event::read()? {
-        Event::Key(key) => match key.code {
-            KeyCode::Esc => Some(AppEvent::Close),
-            KeyCode::Backspace => Some(AppEvent::DeleteSymbol),
-            KeyCode::Up => Some(AppEvent::PrevScreen),
-            KeyCode::Down => Some(AppEvent::NextScreen),
-            KeyCode::Left => Some(AppEvent::CursorLeft),
-            KeyCode::Right => Some(AppEvent::CursorRight),
-            _ => key.code.as_char().map(AppEvent::AddSymbol),
-        },
-        _ => None,
-    };
-    Ok(app_event)
-}
-
-fn style_for_screen(screen: AppScreen, state: &AppState) -> Style {
-    if screen == state.screen {
-        Style::default().fg(Color::Yellow)
+fn style_for_screen(screen: AppScreen, model: &AppModel) -> Style {
+    if screen == model.screen {
+        Style::default().fg(if model.is_focused {
+            Color::Green
+        } else {
+            Color::Yellow
+        })
     } else {
         Style::default()
     }
 }
 
-fn render_frame(frame: &mut Frame, state: &AppState) {
+pub fn render_frame(frame: &mut Frame, model: &AppModel) {
     let chunks = Layout::default()
         .direction(Direction::Horizontal)
         .constraints([Constraint::Length(30), Constraint::Min(0)])
         .split(frame.area());
-    render_sidebar(frame, state, chunks[0]);
-    render_main_panel(frame, state, chunks[1]);
+    render_sidebar(frame, model, chunks[0]);
+    render_main_panel(frame, model, chunks[1]);
 }
 
-fn render_sidebar(frame: &mut Frame, state: &AppState, rect: Rect) {
+fn render_sidebar(frame: &mut Frame, model: &AppModel, rect: Rect) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
@@ -81,32 +42,32 @@ fn render_sidebar(frame: &mut Frame, state: &AppState, rect: Rect) {
             Constraint::Length(3),
         ])
         .split(rect);
-    render_problem_description(frame, state, chunks[0]);
-    render_solution_input(frame, state, chunks[1]);
-    render_algorithms(frame, state, chunks[2]);
-    render_control_panel(frame, state, chunks[3]);
+    render_problem_description(frame, model, chunks[0]);
+    render_solution_input(frame, model, chunks[1]);
+    render_algorithms(frame, model, chunks[2]);
+    render_control_panel(frame, model, chunks[3]);
 }
 
-fn render_problem_description(frame: &mut Frame, state: &AppState, rect: Rect) {
+fn render_problem_description(frame: &mut Frame, model: &AppModel, rect: Rect) {
     let items = [
-        ListItem::new(format!("Jobs: {}", state.problem.jobs_number)),
-        ListItem::new(format!("Machines: {}", state.problem.machines_number)),
+        ListItem::new(format!("Jobs: {}", model.problem.jobs_number)),
+        ListItem::new(format!("Machines: {}", model.problem.machines_number)),
         ListItem::new(
-            state
+            model
                 .problem
                 .initial_seed
                 .map(|seed| format!("Seed: {}", seed))
                 .unwrap_or(String::from("Seed: -")),
         ),
         ListItem::new(
-            state
+            model
                 .problem
                 .upper_bound
                 .map(|upper_bound| format!("Upper bound: {}", upper_bound))
                 .unwrap_or(String::from("Upper bound: -")),
         ),
         ListItem::new(
-            state
+            model
                 .problem
                 .lower_bound
                 .map(|lower_bound| format!("Lower bound: {}", lower_bound))
@@ -117,80 +78,80 @@ fn render_problem_description(frame: &mut Frame, state: &AppState, rect: Rect) {
         Block::default()
             .title("Problem Instance")
             .borders(Borders::ALL)
-            .border_style(style_for_screen(AppScreen::ProblemInstance, state)),
+            .border_style(style_for_screen(AppScreen::ProblemInstance, model)),
     );
     frame.render_widget(list, rect);
 }
 
-fn render_solution_input(frame: &mut Frame, state: &AppState, rect: Rect) {
+fn render_solution_input(frame: &mut Frame, model: &AppModel, rect: Rect) {
     render_input(
         "Current Solution",
-        state.screen == AppScreen::CurrentSolution,
+        style_for_screen(AppScreen::CurrentSolution, model),
         frame,
-        &state.solution_input,
+        &model.solution_input,
         rect,
     );
 }
 
-fn render_algorithms(frame: &mut Frame, state: &AppState, rect: Rect) {
+fn render_algorithms(frame: &mut Frame, model: &AppModel, rect: Rect) {
     let block = Block::default()
         .title("Algorithms")
         .borders(Borders::ALL)
-        .border_style(style_for_screen(AppScreen::Algorithms, state));
+        .border_style(style_for_screen(AppScreen::Algorithms, model));
     // TODO:
     frame.render_widget(block, rect);
 }
 
-fn render_control_panel(frame: &mut Frame, state: &AppState, rect: Rect) {
+fn render_control_panel(frame: &mut Frame, model: &AppModel, rect: Rect) {
     let block = Block::default()
         .title("Run algorithm")
         .borders(Borders::ALL)
-        .border_style(style_for_screen(AppScreen::ControlPanel, state));
+        .border_style(style_for_screen(AppScreen::ControlPanel, model));
     // TODO:
     frame.render_widget(block, rect);
 }
 
-fn render_main_panel(frame: &mut Frame, state: &AppState, rect: Rect) {
+fn render_main_panel(frame: &mut Frame, model: &AppModel, rect: Rect) {
     let block = Block::default().borders(Borders::ALL);
     // TODO:
     frame.render_widget(&block, rect);
     let inner_rect = block.inner(rect);
-    match state.screen {
+    match model.screen {
         AppScreen::ProblemInstance => {
-            render_main_panel_for_problem_description(frame, state, inner_rect)
+            render_main_panel_for_problem_description(frame, model, inner_rect)
         }
         AppScreen::CurrentSolution => {
-            render_main_panel_for_solution_input(frame, state, inner_rect)
+            render_main_panel_for_solution_input(frame, model, inner_rect)
         }
         _ => {} // TODO:
     };
 }
 
-fn render_main_panel_for_problem_description(frame: &mut Frame, state: &AppState, rect: Rect) {
+fn render_main_panel_for_problem_description(frame: &mut Frame, model: &AppModel, rect: Rect) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([Constraint::Length(7), Constraint::Min(0)])
         .split(rect);
 
     let items = [
-        ListItem::new(format!("Jobs: {}", state.problem.jobs_number)),
-        ListItem::new(format!("Machines: {}", state.problem.machines_number)),
+        ListItem::new(format!("Jobs: {}", model.problem.jobs_number)),
+        ListItem::new(format!("Machines: {}", model.problem.machines_number)),
         ListItem::new(
-            state
+            model
                 .problem
                 .initial_seed
                 .map(|seed| format!("Seed: {}", seed))
                 .unwrap_or(String::from("Seed: -")),
         ),
         ListItem::new(
-            state
+            model
                 .problem
                 .upper_bound
                 .map(|upper_bound| format!("Upper bound: {}", upper_bound))
                 .unwrap_or(String::from("Upper bound: -")),
         ),
         ListItem::new(
-            state
+            model
                 .problem
                 .lower_bound
                 .map(|lower_bound| format!("Lower bound: {}", lower_bound))
@@ -207,12 +168,12 @@ fn render_main_panel_for_problem_description(frame: &mut Frame, state: &AppState
     render_matrix(
         frame,
         chunks[1],
-        &state.problem.processing_times,
-        &state.matrix,
+        &model.problem.processing_times,
+        &model.processing_times_matrix,
     );
 }
 
-fn render_main_panel_for_solution_input(frame: &mut Frame, state: &AppState, rect: Rect) {
+fn render_main_panel_for_solution_input(frame: &mut Frame, model: &AppModel, rect: Rect) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([Constraint::Length(5), Constraint::Min(0)])
@@ -220,19 +181,19 @@ fn render_main_panel_for_solution_input(frame: &mut Frame, state: &AppState, rec
 
     render_input(
         "Current Solution",
-        false,
+        Style::default(),
         frame,
-        &state.solution_input,
+        &model.solution_input,
         chunks[0],
     );
 
-    let parsed_solution = Solution::parse(&state.solution_input.value);
+    let parsed_solution = Solution::parse(&model.solution_input.value);
 
     if let Some(solution) = parsed_solution
-        && solution.is_loosely_valid(state.problem.jobs_number)
+        && solution.is_loosely_valid(model.problem.jobs_number)
     {
-        let total_flow_time = solution.total_flow_time(&state.problem.processing_times);
-        let graph_data = solution.graph_data(&state.problem.processing_times);
+        let total_flow_time = solution.total_flow_time(&model.problem.processing_times);
+        let graph_data = solution.graph_data(&model.problem.processing_times);
 
         let inner_chunks = Layout::default()
             .direction(Direction::Vertical)

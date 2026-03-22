@@ -3,7 +3,8 @@ use std::{env, fs::File, io::BufReader};
 
 mod tui;
 
-fn main() -> color_eyre::Result<()> {
+#[tokio::main]
+async fn main() -> color_eyre::Result<()> {
     #[cfg(debug_assertions)]
     {
         color_eyre::install()?;
@@ -23,6 +24,6 @@ fn main() -> color_eyre::Result<()> {
     let file = File::open(path)?;
     let reader = BufReader::new(file);
     let problem = Problem::parse(reader)?;
-    tui::run_tui(&problem)?;
+    tui::start_application(&problem).await?;
     Ok(())
 }
