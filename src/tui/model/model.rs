@@ -53,12 +53,8 @@ impl<'a> AppModel<'a> {
                     Key(symbol) => self.solution_input.add_symbol(symbol),
                     _ => {}
                 },
-                Algorithms => match event {
-                    _ => {}
-                },
-                ControlPanel => match event {
-                    _ => {}
-                },
+                Algorithms => {},
+                ControlPanel => {},
             }
             return;
         }

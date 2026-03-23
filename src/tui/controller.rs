@@ -79,11 +79,10 @@ async fn handle_keyboard_events(tx: UnboundedSender<AppEvent>, token: Cancellati
                 .unwrap_or(false)
                 .then(|| AppEvent::read().ok().flatten()).flatten()
                     }) => {
-                        if let Ok(Some(event)) = maybe_event {
-                            if tx.send(event).is_err() {
+                        if let Ok(Some(event)) = maybe_event
+                            && tx.send(event).is_err() {
                                 break;
                             }
-                        }
                     }
                 }
     }

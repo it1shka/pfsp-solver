@@ -109,8 +109,7 @@ impl AdapterGA {
         let seed = {
             settings
                 .get(FIELD_SEED)
-                .map(|raw| raw.parse::<u64>().ok())
-                .flatten()
+                .and_then(|raw| raw.parse::<u64>().ok())
                 .or(problem.initial_seed)
         };
         let mut rng = get_rng(seed);
@@ -184,9 +183,9 @@ impl AdapterGA {
 impl RunnableAdapter for AdapterGA {
     async fn run(
         &self,
-        problem: &Problem,
-        initial: Option<&Solution>,
-        tx: UnboundedSender<RunLog>,
+        _problem: &Problem,
+        _initial: Option<&Solution>,
+        _tx: UnboundedSender<RunLog>,
     ) {
     }
 }

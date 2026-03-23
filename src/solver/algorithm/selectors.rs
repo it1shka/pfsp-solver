@@ -41,6 +41,12 @@ impl<R: Rng> Selector<R> for Tournament {
 
 pub struct Roulette;
 
+impl Default for Roulette {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Roulette {
     pub fn new() -> Self {
         Self {}

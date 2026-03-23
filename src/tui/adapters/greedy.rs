@@ -19,9 +19,9 @@ impl Default for AdapterGreedy {
 impl RunnableAdapter for AdapterGreedy {
     async fn run(
         &self,
-        problem: &Problem,
-        initial: Option<&Solution>,
-        tx: UnboundedSender<RunLog>,
+        _problem: &Problem,
+        _initial: Option<&Solution>,
+        _tx: UnboundedSender<RunLog>,
     ) {
     }
 }
