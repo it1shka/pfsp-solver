@@ -19,7 +19,13 @@ macro_rules! define_operator {
     ($op_name:ident, $op_str_name:expr) => {
         #[derive(Clone, Copy)]
         pub struct $op_name {
-            p: f32,
+            pub p: f32,
+        }
+
+        impl $op_name {
+            pub fn new(p: f32) -> Self {
+                Self { p }
+            }
         }
 
         impl Operator for $op_name {

@@ -16,6 +16,12 @@ pub struct Tournament {
     pub size: usize,
 }
 
+impl Tournament {
+    pub fn new(size: usize) -> Self {
+        Self { size }
+    }
+}
+
 impl<R: Rng> Selector<R> for Tournament {
     fn name(&self) -> &'static str {
         "Tournament"
@@ -34,6 +40,12 @@ impl<R: Rng> Selector<R> for Tournament {
 }
 
 pub struct Roulette;
+
+impl Roulette {
+    pub fn new() -> Self {
+        Self {}
+    }
+}
 
 impl<R: Rng> Selector<R> for Roulette {
     fn name(&self) -> &'static str {

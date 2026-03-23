@@ -1,3 +1,4 @@
+mod adapters;
 mod components;
 mod controller;
 mod model;
