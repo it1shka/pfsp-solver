@@ -63,5 +63,5 @@ pub struct RunLog {
 }
 
 pub trait RunnableAdapter: Adapter {
-    async fn run(&self, problem: &Problem, initial: Option<Solution>, tx: UnboundedSender<RunLog>);
+    async fn run(&self, problem: &Problem, initial: Option<&Solution>, tx: UnboundedSender<RunLog>);
 }

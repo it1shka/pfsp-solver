@@ -35,6 +35,7 @@ const FIELD_SWAP_MUTATION_P: &str = "swap-mutation";
 const FIELD_INVERSION_MUTATION_P: &str = "inversion-mutation";
 
 const DEFAULT_POPULATION_SIZE: usize = 1000;
+const DEFAULT_SELECTOR: &str = "roulette";
 const DEFAULT_TOURNAMENT_SIZE: usize = 5;
 const DEFAULT_ELITE_P: f32 = 0.05;
 const DEFAULT_ORDERED_CROSSOVER_P: f32 = 0.1;
@@ -47,11 +48,43 @@ const SELECTOR_TOURNAMENT: &str = "tournament";
 
 define_algorithm!(AdapterGA, "Genetic Algorithm");
 
+impl Default for AdapterGA {
+    fn default() -> Self {
+        let settings = [
+            (FIELD_POPULATION_SIZE, DEFAULT_POPULATION_SIZE.to_string()),
+            (FIELD_SELECTOR, DEFAULT_SELECTOR.to_string()),
+            (FIELD_ELITE_P, DEFAULT_ELITE_P.to_string()),
+            (
+                FIELD_ORDERED_CROSSOVER_P,
+                DEFAULT_ORDERED_CROSSOVER_P.to_string(),
+            ),
+            (
+                FIELD_PARTIALLY_MATCHED_CROSSOVER_P,
+                DEFAULT_PARTIALLY_MATCHED_CROSSOVER_P.to_string(),
+            ),
+            (
+                FIELD_CYCLE_CROSSOVER_P,
+                DEFAULT_CYCLE_CROSSOVER_P.to_string(),
+            ),
+            (FIELD_SWAP_MUTATION_P, DEFAULT_SWAP_MUTATION_P.to_string()),
+            (
+                FIELD_INVERSION_MUTATION_P,
+                DEFAULT_INVERSION_MUTATION_P.to_string(),
+            ),
+        ]
+        .into_iter()
+        .map(|(field, value)| format!("{}: {}", field, value))
+        .collect::<Vec<_>>()
+        .join("\n");
+        Self { settings }
+    }
+}
+
 impl AdapterGA {
     fn configure_genetic(
         &self,
         problem: &Problem,
-        initial: Option<Solution>,
+        initial: Option<&Solution>,
     ) -> GeneticAlgorithm<impl Rng> {
         let settings = self.build_settings();
         macro_rules! get_numeric_param {
@@ -87,7 +120,7 @@ impl AdapterGA {
             max(MIN_POPULATION_SIZE, initial_population_size)
         };
         let population = if let Some(initial_solution) = initial {
-            Population::from_initial(&mut rng, population_size, &initial_solution)
+            Population::from_initial(&mut rng, population_size, initial_solution)
         } else {
             Population::random(&mut rng, population_size, problem.jobs_number)
         };
@@ -149,6 +182,11 @@ impl AdapterGA {
 }
 
 impl RunnableAdapter for AdapterGA {
-    async fn run(&self, problem: &Problem, initial: Option<Solution>, tx: UnboundedSender<RunLog>) {
+    async fn run(
+        &self,
+        problem: &Problem,
+        initial: Option<&Solution>,
+        tx: UnboundedSender<RunLog>,
+    ) {
     }
 }
