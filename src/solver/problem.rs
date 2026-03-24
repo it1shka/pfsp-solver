@@ -2,7 +2,7 @@ use std::io::{self, BufRead};
 
 pub type Time = u64;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Problem {
     pub jobs_number: usize,
     pub machines_number: usize,

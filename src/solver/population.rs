@@ -1,6 +1,9 @@
 use rand::{Rng, seq::SliceRandom};
 
-use crate::solver::solution::Solution;
+use crate::solver::{
+    algorithm::operators::{Operator, SwapMutation, UnaryOperator},
+    solution::Solution,
+};
 
 pub struct Population {
     pub data: Vec<Solution>,
@@ -27,6 +30,22 @@ impl Population {
                 })
                 .collect(),
         }
+    }
+
+    pub fn from_initial<R: Rng>(
+        rng: &mut R,
+        population_size: usize,
+        init_solution: &Solution,
+    ) -> Self {
+        let mutator = SwapMutation::new(1.0);
+        let mut data = Vec::with_capacity(population_size);
+        data.push(init_solution.clone());
+        for _ in 1..population_size {
+            let mut mutated_solution = init_solution.clone();
+            mutator.mutate(rng, &mut mutated_solution);
+            data.push(mutated_solution);
+        }
+        Self { data }
     }
 
     pub fn is_valid(&self) -> bool {

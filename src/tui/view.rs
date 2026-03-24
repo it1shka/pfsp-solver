@@ -1,77 +1,41 @@
-use std::{io, time::Duration};
-
-use crossterm::event::{self, Event, KeyCode};
 use pfsp_solver::solver::solution::Solution;
 use ratatui::{
-    Frame, Terminal,
+    Frame,
     layout::{Constraint, Direction, Layout, Rect},
-    prelude::Backend,
-    style::{Color, Style},
-    widgets::{Block, Borders, List, ListItem, Paragraph},
+    style::{Color, Modifier, Style},
+    symbols,
+    text::{Line, Span},
+    widgets::{Axis, Block, Borders, Chart, Dataset, List, ListItem, Paragraph},
 };
+use tui_textarea::TextArea;
 
 use crate::tui::{
     components::{gantt::render_gantt_chart, input::render_input, matrix::render_matrix},
-    state::{AppEvent, AppScreen, AppState},
+    model::{model::AppModel, screen::AppScreen},
 };
 
-const EVENT_POLL_TIME: u64 = 33;
-
-pub fn render_loop<B: Backend>(
-    terminal: &mut Terminal<B>,
-    state: &mut AppState,
-) -> color_eyre::Result<()>
-where
-    color_eyre::Report: From<B::Error>,
-{
-    while state.is_running {
-        terminal.draw(|frame| {
-            render_frame(frame, state);
-        })?;
-        if event::poll(Duration::from_millis(EVENT_POLL_TIME))? {
-            let maybe_event = read_app_event()?;
-            if let Some(event) = maybe_event {
-                state.update_on_event(event);
-            }
-        }
-    }
-    Ok(())
-}
-
-fn read_app_event() -> io::Result<Option<AppEvent>> {
-    let app_event = match event::read()? {
-        Event::Key(key) => match key.code {
-            KeyCode::Esc => Some(AppEvent::Close),
-            KeyCode::Backspace => Some(AppEvent::DeleteSymbol),
-            KeyCode::Up => Some(AppEvent::PrevScreen),
-            KeyCode::Down => Some(AppEvent::NextScreen),
-            KeyCode::Left => Some(AppEvent::CursorLeft),
-            KeyCode::Right => Some(AppEvent::CursorRight),
-            _ => key.code.as_char().map(AppEvent::AddSymbol),
-        },
-        _ => None,
-    };
-    Ok(app_event)
-}
-
-fn style_for_screen(screen: AppScreen, state: &AppState) -> Style {
-    if screen == state.screen {
-        Style::default().fg(Color::Yellow)
+fn style_for_screen(screen: AppScreen, model: &AppModel) -> Style {
+    if screen == model.screen {
+        Style::default().fg(if model.is_focused {
+            Color::Green
+        } else {
+            Color::Yellow
+        })
     } else {
         Style::default()
     }
 }
 
-fn render_frame(frame: &mut Frame, state: &AppState) {
+pub fn render_frame(frame: &mut Frame, model: &AppModel) {
     let chunks = Layout::default()
         .direction(Direction::Horizontal)
         .constraints([Constraint::Length(30), Constraint::Min(0)])
         .split(frame.area());
-    render_sidebar(frame, state, chunks[0]);
-    render_main_panel(frame, state, chunks[1]);
+    render_sidebar(frame, model, chunks[0]);
+    render_main_panel(frame, model, chunks[1]);
 }
 
-fn render_sidebar(frame: &mut Frame, state: &AppState, rect: Rect) {
+fn render_sidebar(frame: &mut Frame, model: &AppModel, rect: Rect) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
@@ -81,32 +45,32 @@ fn render_sidebar(frame: &mut Frame, state: &AppState, rect: Rect) {
             Constraint::Length(3),
         ])
         .split(rect);
-    render_problem_description(frame, state, chunks[0]);
-    render_solution_input(frame, state, chunks[1]);
-    render_algorithms(frame, state, chunks[2]);
-    render_control_panel(frame, state, chunks[3]);
+    render_problem_description(frame, model, chunks[0]);
+    render_solution_input(frame, model, chunks[1]);
+    render_algorithms(frame, model, chunks[2]);
+    render_control_panel(frame, model, chunks[3]);
 }
 
-fn render_problem_description(frame: &mut Frame, state: &AppState, rect: Rect) {
+fn render_problem_description(frame: &mut Frame, model: &AppModel, rect: Rect) {
     let items = [
-        ListItem::new(format!("Jobs: {}", state.problem.jobs_number)),
-        ListItem::new(format!("Machines: {}", state.problem.machines_number)),
+        ListItem::new(format!("Jobs: {}", model.problem.jobs_number)),
+        ListItem::new(format!("Machines: {}", model.problem.machines_number)),
         ListItem::new(
-            state
+            model
                 .problem
                 .initial_seed
                 .map(|seed| format!("Seed: {}", seed))
                 .unwrap_or(String::from("Seed: -")),
         ),
         ListItem::new(
-            state
+            model
                 .problem
                 .upper_bound
                 .map(|upper_bound| format!("Upper bound: {}", upper_bound))
                 .unwrap_or(String::from("Upper bound: -")),
         ),
         ListItem::new(
-            state
+            model
                 .problem
                 .lower_bound
                 .map(|lower_bound| format!("Lower bound: {}", lower_bound))
@@ -117,80 +81,104 @@ fn render_problem_description(frame: &mut Frame, state: &AppState, rect: Rect) {
         Block::default()
             .title("Problem Instance")
             .borders(Borders::ALL)
-            .border_style(style_for_screen(AppScreen::ProblemInstance, state)),
+            .border_style(style_for_screen(AppScreen::ProblemInstance, model)),
     );
     frame.render_widget(list, rect);
 }
 
-fn render_solution_input(frame: &mut Frame, state: &AppState, rect: Rect) {
+fn render_solution_input(frame: &mut Frame, model: &AppModel, rect: Rect) {
     render_input(
         "Current Solution",
-        state.screen == AppScreen::CurrentSolution,
+        style_for_screen(AppScreen::CurrentSolution, model),
         frame,
-        &state.solution_input,
+        &model.solution_input,
         rect,
     );
 }
 
-fn render_algorithms(frame: &mut Frame, state: &AppState, rect: Rect) {
-    let block = Block::default()
-        .title("Algorithms")
-        .borders(Borders::ALL)
-        .border_style(style_for_screen(AppScreen::Algorithms, state));
-    // TODO:
-    frame.render_widget(block, rect);
+fn render_algorithms(frame: &mut Frame, model: &AppModel, rect: Rect) {
+    let items: Vec<ListItem> = model
+        .algorithms
+        .iter()
+        .enumerate()
+        .map(|(i, adapter)| {
+            let prefix = if i == model.selected_algorithm {
+                "+"
+            } else {
+                " "
+            };
+            let style = if i == model.selected_algorithm {
+                Style::default().add_modifier(Modifier::BOLD)
+            } else {
+                Style::default()
+            };
+            ListItem::new(format!("{} {}. {}", prefix, i + 1, adapter.name())).style(style)
+        })
+        .collect();
+    let list = List::new(items).block(
+        Block::default()
+            .title("Algorithms")
+            .borders(Borders::ALL)
+            .border_style(style_for_screen(AppScreen::Algorithms, model)),
+    );
+    frame.render_widget(list, rect);
 }
 
-fn render_control_panel(frame: &mut Frame, state: &AppState, rect: Rect) {
+fn render_control_panel(frame: &mut Frame, model: &AppModel, rect: Rect) {
+    let label = if model.algorithm_running {
+        "Stop"
+    } else {
+        "Start"
+    };
     let block = Block::default()
         .title("Run algorithm")
         .borders(Borders::ALL)
-        .border_style(style_for_screen(AppScreen::ControlPanel, state));
-    // TODO:
-    frame.render_widget(block, rect);
+        .border_style(style_for_screen(AppScreen::ControlPanel, model));
+    let paragraph = Paragraph::new(label).block(block);
+    frame.render_widget(paragraph, rect);
 }
 
-fn render_main_panel(frame: &mut Frame, state: &AppState, rect: Rect) {
+fn render_main_panel(frame: &mut Frame, model: &AppModel, rect: Rect) {
     let block = Block::default().borders(Borders::ALL);
-    // TODO:
     frame.render_widget(&block, rect);
     let inner_rect = block.inner(rect);
-    match state.screen {
+    match model.screen {
         AppScreen::ProblemInstance => {
-            render_main_panel_for_problem_description(frame, state, inner_rect)
+            render_main_panel_for_problem_description(frame, model, inner_rect)
         }
         AppScreen::CurrentSolution => {
-            render_main_panel_for_solution_input(frame, state, inner_rect)
+            render_main_panel_for_solution_input(frame, model, inner_rect)
         }
-        _ => {} // TODO:
+        AppScreen::Algorithms => render_main_panel_for_algorithms(frame, model, inner_rect),
+        AppScreen::ControlPanel => render_main_panel_for_control_panel(frame, model, inner_rect),
     };
 }
 
-fn render_main_panel_for_problem_description(frame: &mut Frame, state: &AppState, rect: Rect) {
+fn render_main_panel_for_problem_description(frame: &mut Frame, model: &AppModel, rect: Rect) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([Constraint::Length(7), Constraint::Min(0)])
         .split(rect);
 
     let items = [
-        ListItem::new(format!("Jobs: {}", state.problem.jobs_number)),
-        ListItem::new(format!("Machines: {}", state.problem.machines_number)),
+        ListItem::new(format!("Jobs: {}", model.problem.jobs_number)),
+        ListItem::new(format!("Machines: {}", model.problem.machines_number)),
         ListItem::new(
-            state
+            model
                 .problem
                 .initial_seed
                 .map(|seed| format!("Seed: {}", seed))
                 .unwrap_or(String::from("Seed: -")),
         ),
         ListItem::new(
-            state
+            model
                 .problem
                 .upper_bound
                 .map(|upper_bound| format!("Upper bound: {}", upper_bound))
                 .unwrap_or(String::from("Upper bound: -")),
         ),
         ListItem::new(
-            state
+            model
                 .problem
                 .lower_bound
                 .map(|lower_bound| format!("Lower bound: {}", lower_bound))
@@ -207,12 +195,12 @@ fn render_main_panel_for_problem_description(frame: &mut Frame, state: &AppState
     render_matrix(
         frame,
         chunks[1],
-        &state.problem.processing_times,
-        &state.matrix,
+        &model.problem.processing_times,
+        &model.processing_times_matrix,
     );
 }
 
-fn render_main_panel_for_solution_input(frame: &mut Frame, state: &AppState, rect: Rect) {
+fn render_main_panel_for_solution_input(frame: &mut Frame, model: &AppModel, rect: Rect) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([Constraint::Length(5), Constraint::Min(0)])
@@ -220,19 +208,19 @@ fn render_main_panel_for_solution_input(frame: &mut Frame, state: &AppState, rec
 
     render_input(
         "Current Solution",
-        false,
+        Style::default(),
         frame,
-        &state.solution_input,
+        &model.solution_input,
         chunks[0],
     );
 
-    let parsed_solution = Solution::parse(&state.solution_input.value);
+    let parsed_solution = Solution::parse(&model.solution_input.value);
 
     if let Some(solution) = parsed_solution
-        && solution.is_loosely_valid(state.problem.jobs_number)
+        && solution.is_loosely_valid(model.problem.jobs_number)
     {
-        let total_flow_time = solution.total_flow_time(&state.problem.processing_times);
-        let graph_data = solution.graph_data(&state.problem.processing_times);
+        let total_flow_time = solution.total_flow_time(&model.problem.processing_times);
+        let graph_data = solution.graph_data(&model.problem.processing_times);
 
         let inner_chunks = Layout::default()
             .direction(Direction::Vertical)
@@ -264,4 +252,190 @@ fn render_main_panel_for_solution_input(frame: &mut Frame, state: &AppState, rec
         ])
         .split(chunks[1]);
     frame.render_widget(error, centered[1]);
+}
+
+fn render_textarea(frame: &mut Frame, textarea: &TextArea, rect: Rect, is_focused: bool) {
+    let (cursor_row, cursor_col) = textarea.cursor();
+    let lines: Vec<Line> = textarea
+        .lines()
+        .iter()
+        .enumerate()
+        .map(|(i, line)| {
+            if is_focused && i == cursor_row {
+                let char_indices: Vec<usize> = line.char_indices().map(|(idx, _)| idx).collect();
+                let byte_start = char_indices.get(cursor_col).copied().unwrap_or(line.len());
+                let byte_end = char_indices
+                    .get(cursor_col + 1)
+                    .copied()
+                    .unwrap_or(line.len());
+                let before = &line[..byte_start];
+                let cursor_char = if byte_start < line.len() {
+                    &line[byte_start..byte_end]
+                } else {
+                    " "
+                };
+                let after = &line[byte_end..];
+                Line::from(vec![
+                    Span::raw(before.to_string()),
+                    Span::styled(
+                        cursor_char.to_string(),
+                        Style::default().bg(Color::White).fg(Color::Black),
+                    ),
+                    Span::raw(after.to_string()),
+                ])
+            } else {
+                Line::raw(line.to_string())
+            }
+        })
+        .collect();
+    let paragraph = Paragraph::new(lines).block(
+        Block::default()
+            .title("Settings")
+            .borders(Borders::ALL)
+            .border_style(if is_focused {
+                Style::default().fg(Color::Green)
+            } else {
+                Style::default()
+            }),
+    );
+    frame.render_widget(paragraph, rect);
+}
+
+fn render_main_panel_for_algorithms(frame: &mut Frame, model: &AppModel, rect: Rect) {
+    let chunks = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
+        .split(rect);
+
+    let is_focused = model.is_focused && model.screen == AppScreen::Algorithms;
+    render_textarea(frame, &model.settings_textarea, chunks[0], is_focused);
+
+    let items: Vec<ListItem> = model
+        .settings_textarea
+        .lines()
+        .iter()
+        .filter_map(|line| {
+            let parts: Vec<&str> = line.splitn(2, ':').map(|s| s.trim()).collect();
+            if parts.len() == 2 && !parts[0].is_empty() {
+                Some(ListItem::new(format!("{}: {}", parts[0], parts[1])))
+            } else {
+                None
+            }
+        })
+        .collect();
+    let parsed_list = List::new(items).block(
+        Block::default()
+            .title("Parsed Settings")
+            .borders(Borders::ALL),
+    );
+    frame.render_widget(parsed_list, chunks[1]);
+}
+
+fn render_main_panel_for_control_panel(frame: &mut Frame, model: &AppModel, rect: Rect) {
+    let chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([
+            Constraint::Length(3),
+            Constraint::Percentage(50),
+            Constraint::Min(0),
+        ])
+        .split(rect);
+
+    let header = Paragraph::new("Enter: Start/Stop | r: Reset logs | j/k: Scroll")
+        .block(Block::default().title("Controls").borders(Borders::ALL));
+    frame.render_widget(header, chunks[0]);
+
+    render_logs_list(frame, model, chunks[1]);
+    render_fitness_chart(frame, model, chunks[2]);
+}
+
+fn render_logs_list(frame: &mut Frame, model: &AppModel, rect: Rect) {
+    let num_width = model.run_logs.len().max(1).to_string().len();
+    let inner_width = rect.width.saturating_sub(2) as usize;
+    let visible_height = rect.height.saturating_sub(2) as usize;
+    let fitness_col_width = 12;
+    let message_col_width = inner_width.saturating_sub(fitness_col_width + num_width + 5);
+
+    let scroll = if model.log_autoscroll {
+        model.run_logs.len().saturating_sub(visible_height)
+    } else {
+        model.log_scroll.min(model.run_logs.len().saturating_sub(visible_height))
+    };
+
+    let items: Vec<ListItem> = model
+        .run_logs
+        .iter()
+        .enumerate()
+        .skip(scroll)
+        .map(|(i, log)| {
+            let message: String = log.message.chars().take(message_col_width).collect();
+            ListItem::new(format!(
+                "{:>nw$} {:<mw$} | {}",
+                i + 1,
+                message,
+                log.fitness,
+                nw = num_width,
+                mw = message_col_width
+            ))
+        })
+        .collect();
+    let list = List::new(items).block(
+        Block::default()
+            .title(format!("Logs ({} entries)", model.run_logs.len()))
+            .borders(Borders::ALL),
+    );
+    frame.render_widget(list, rect);
+}
+
+fn render_fitness_chart(frame: &mut Frame, model: &AppModel, rect: Rect) {
+    if model.fitness_data.is_empty() {
+        let empty = Paragraph::new("No data yet")
+            .block(Block::default().title("Fitness").borders(Borders::ALL));
+        frame.render_widget(empty, rect);
+        return;
+    }
+
+    let max_x = model.fitness_data.len() as f64;
+    let min_y = model
+        .fitness_data
+        .iter()
+        .map(|p| p.1)
+        .fold(f64::INFINITY, f64::min);
+    let max_y = model
+        .fitness_data
+        .iter()
+        .map(|p| p.1)
+        .fold(f64::NEG_INFINITY, f64::max);
+    let y_margin = if (max_y - min_y).abs() < f64::EPSILON {
+        1.0
+    } else {
+        (max_y - min_y) * 0.1
+    };
+
+    let dataset = Dataset::default()
+        .marker(symbols::Marker::Braille)
+        .style(Style::default().fg(Color::Cyan))
+        .data(&model.fitness_data);
+
+    let chart = Chart::new(vec![dataset])
+        .block(Block::default().title("Fitness").borders(Borders::ALL))
+        .x_axis(
+            Axis::default()
+                .title("Iteration")
+                .bounds([0.0, max_x])
+                .labels::<Vec<Line>>(vec![
+                    "0".into(),
+                    format!("{}", max_x as u64).into(),
+                ]),
+        )
+        .y_axis(
+            Axis::default()
+                .title("Fitness")
+                .bounds([min_y - y_margin, max_y + y_margin])
+                .labels::<Vec<Line>>(vec![
+                    format!("{}", min_y as u64).into(),
+                    format!("{}", max_y as u64).into(),
+                ]),
+        );
+    frame.render_widget(chart, rect);
 }

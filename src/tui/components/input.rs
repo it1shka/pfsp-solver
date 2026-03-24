@@ -1,7 +1,7 @@
 use ratatui::{
     Frame,
     layout::Rect,
-    style::{Color, Style},
+    style::Style,
     widgets::{Block, Borders, Paragraph},
 };
 
@@ -43,15 +43,11 @@ impl InputState {
     }
 }
 
-pub fn render_input(title: &str, focus: bool, frame: &mut Frame, state: &InputState, rect: Rect) {
+pub fn render_input(title: &str, style: Style, frame: &mut Frame, state: &InputState, rect: Rect) {
     let block = Block::default()
         .title(title)
         .borders(Borders::ALL)
-        .border_style(if focus {
-            Style::default().fg(Color::Yellow)
-        } else {
-            Style::default()
-        });
+        .border_style(style);
 
     let inner_width = rect.width.saturating_sub(2) as usize;
 

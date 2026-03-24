@@ -2,7 +2,7 @@ use std::ops::Range;
 
 use rand::{Rng, RngExt, SeedableRng, rngs::StdRng};
 
-pub fn get_rng(maybe_seed: Option<u64>) -> StdRng {
+pub fn get_rng(maybe_seed: Option<u64>) -> impl Rng {
     if let Some(seed) = maybe_seed {
         StdRng::seed_from_u64(seed)
     } else {

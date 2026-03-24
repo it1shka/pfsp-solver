@@ -10,14 +10,14 @@ pub trait Evaluator {
     fn evaluate(&mut self, solution: &Solution) -> Time;
 }
 
-pub struct TFTEvaluator<'a> {
+pub struct TFTEvaluator {
     unique_evaluations: u64,
     cache: HashMap<u64, Time>,
-    processing_times: &'a [Vec<Time>],
+    processing_times: Vec<Vec<Time>>,
 }
 
-impl<'a> TFTEvaluator<'a> {
-    pub fn new(processing_times: &'a [Vec<Time>]) -> Self {
+impl TFTEvaluator {
+    pub fn new(processing_times: Vec<Vec<Time>>) -> Self {
         Self {
             unique_evaluations: 0,
             cache: HashMap::new(),
@@ -30,7 +30,7 @@ impl<'a> TFTEvaluator<'a> {
     }
 }
 
-impl<'a> Evaluator for TFTEvaluator<'a> {
+impl Evaluator for TFTEvaluator {
     fn eval_count(&self) -> u64 {
         self.unique_evaluations
     }
@@ -41,7 +41,7 @@ impl<'a> Evaluator for TFTEvaluator<'a> {
         let key = hasher.finish();
         *self.cache.entry(key).or_insert_with(|| {
             self.unique_evaluations += 1;
-            solution.total_flow_time(self.processing_times)
+            solution.total_flow_time(&self.processing_times)
         })
     }
 }
