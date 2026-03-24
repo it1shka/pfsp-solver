@@ -51,7 +51,7 @@ const DEFAULT_MAX_FFE: u64 = 10_000;
 
 const SELECTOR_TOURNAMENT: &str = "tournament";
 
-define_algorithm!(AdapterGA, "Genetic Algorithm");
+define_algorithm!(AdapterGA, "Genetic Algorithm", "GA");
 
 impl Default for AdapterGA {
     fn default() -> Self {

@@ -11,7 +11,7 @@ use crate::{
     tui::adapters::adapter::{Adapter, RunLog, RunnableAdapter, Settings},
 };
 
-define_algorithm!(AdapterGreedy, "Greedy Algorithm");
+define_algorithm!(AdapterGreedy, "Greedy Algorithm", "GR");
 
 impl Default for AdapterGreedy {
     fn default() -> Self {

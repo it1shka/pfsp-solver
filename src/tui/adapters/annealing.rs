@@ -33,7 +33,7 @@ const DEFAULT_TEMPERATURE: f64 = 100.0;
 const DEFAULT_DECAY: f64 = 0.90;
 const DEFAULT_THRESHOLD: f64 = 0.1;
 
-define_algorithm!(AdapterAnnealing, "Simulated Annealing");
+define_algorithm!(AdapterAnnealing, "Simulated Annealing", "SA");
 
 impl Default for AdapterAnnealing {
     fn default() -> Self {

@@ -13,6 +13,7 @@ pub trait Adapter {
     where
         Self: Sized;
     fn name(&self) -> &'static str;
+    fn short_name(&self) -> &'static str;
     fn get_settings(&self) -> &Settings;
     fn set_settings(&mut self, new_settings: Settings);
     fn build_settings(&self) -> HashMap<String, String> {
@@ -32,7 +33,7 @@ pub trait Adapter {
 
 #[macro_export]
 macro_rules! define_algorithm {
-    ($name:ident,$str_name:expr) => {
+    ($name:ident,$str_name:expr,$short:expr) => {
         pub struct $name {
             settings: Settings,
         }
@@ -43,6 +44,9 @@ macro_rules! define_algorithm {
             }
             fn name(&self) -> &'static str {
                 $str_name
+            }
+            fn short_name(&self) -> &'static str {
+                $short
             }
             fn get_settings(&self) -> &Settings {
                 &self.settings

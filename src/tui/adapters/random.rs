@@ -24,13 +24,24 @@ const DEFAULT_SWAP_MUTATION_P: f32 = 0.8;
 const DEFAULT_INVERSION_MUTATION_P: f32 = 0.2;
 const DEFAULT_MAX_FFE: u64 = 10_000;
 
-define_algorithm!(AdapterRandom, "Random Search");
+define_algorithm!(AdapterRandom, "Random Search", "RM");
 
 impl Default for AdapterRandom {
     fn default() -> Self {
-        Self {
-            settings: String::new(),
-        }
+        let settings = [
+            (FIELD_SWAP_MUTATION_P, DEFAULT_SWAP_MUTATION_P.to_string()),
+            (
+                FIELD_INVERSION_MUTATION_P,
+                DEFAULT_INVERSION_MUTATION_P.to_string(),
+            ),
+            (FIELD_MAX_FFE, DEFAULT_MAX_FFE.to_string()),
+        ]
+        .into_iter()
+        .map(|(field, value)| format!("{}: {}", field, value))
+        .collect::<Vec<_>>()
+        .join("\n");
+
+        Self { settings }
     }
 }
 

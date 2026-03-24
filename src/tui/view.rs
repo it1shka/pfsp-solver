@@ -3,8 +3,9 @@ use ratatui::{
     Frame,
     layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
+    symbols,
     text::{Line, Span},
-    widgets::{Block, Borders, List, ListItem, Paragraph},
+    widgets::{Axis, Block, Borders, Chart, Dataset, List, ListItem, Paragraph},
 };
 use tui_textarea::TextArea;
 
@@ -124,17 +125,21 @@ fn render_algorithms(frame: &mut Frame, model: &AppModel, rect: Rect) {
 }
 
 fn render_control_panel(frame: &mut Frame, model: &AppModel, rect: Rect) {
+    let label = if model.algorithm_running {
+        "Stop"
+    } else {
+        "Start"
+    };
     let block = Block::default()
         .title("Run algorithm")
         .borders(Borders::ALL)
         .border_style(style_for_screen(AppScreen::ControlPanel, model));
-    // TODO:
-    frame.render_widget(block, rect);
+    let paragraph = Paragraph::new(label).block(block);
+    frame.render_widget(paragraph, rect);
 }
 
 fn render_main_panel(frame: &mut Frame, model: &AppModel, rect: Rect) {
     let block = Block::default().borders(Borders::ALL);
-    // TODO:
     frame.render_widget(&block, rect);
     let inner_rect = block.inner(rect);
     match model.screen {
@@ -145,7 +150,7 @@ fn render_main_panel(frame: &mut Frame, model: &AppModel, rect: Rect) {
             render_main_panel_for_solution_input(frame, model, inner_rect)
         }
         AppScreen::Algorithms => render_main_panel_for_algorithms(frame, model, inner_rect),
-        _ => {}
+        AppScreen::ControlPanel => render_main_panel_for_control_panel(frame, model, inner_rect),
     };
 }
 
@@ -324,4 +329,113 @@ fn render_main_panel_for_algorithms(frame: &mut Frame, model: &AppModel, rect: R
             .borders(Borders::ALL),
     );
     frame.render_widget(parsed_list, chunks[1]);
+}
+
+fn render_main_panel_for_control_panel(frame: &mut Frame, model: &AppModel, rect: Rect) {
+    let chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([
+            Constraint::Length(3),
+            Constraint::Percentage(50),
+            Constraint::Min(0),
+        ])
+        .split(rect);
+
+    let header = Paragraph::new("Enter: Start/Stop | r: Reset logs | j/k: Scroll")
+        .block(Block::default().title("Controls").borders(Borders::ALL));
+    frame.render_widget(header, chunks[0]);
+
+    render_logs_list(frame, model, chunks[1]);
+    render_fitness_chart(frame, model, chunks[2]);
+}
+
+fn render_logs_list(frame: &mut Frame, model: &AppModel, rect: Rect) {
+    let num_width = model.run_logs.len().max(1).to_string().len();
+    let inner_width = rect.width.saturating_sub(2) as usize;
+    let visible_height = rect.height.saturating_sub(2) as usize;
+    let fitness_col_width = 12;
+    let message_col_width = inner_width.saturating_sub(fitness_col_width + num_width + 5);
+
+    let scroll = if model.log_autoscroll {
+        model.run_logs.len().saturating_sub(visible_height)
+    } else {
+        model.log_scroll.min(model.run_logs.len().saturating_sub(visible_height))
+    };
+
+    let items: Vec<ListItem> = model
+        .run_logs
+        .iter()
+        .enumerate()
+        .skip(scroll)
+        .map(|(i, log)| {
+            let message: String = log.message.chars().take(message_col_width).collect();
+            ListItem::new(format!(
+                "{:>nw$} {:<mw$} | {}",
+                i + 1,
+                message,
+                log.fitness,
+                nw = num_width,
+                mw = message_col_width
+            ))
+        })
+        .collect();
+    let list = List::new(items).block(
+        Block::default()
+            .title(format!("Logs ({} entries)", model.run_logs.len()))
+            .borders(Borders::ALL),
+    );
+    frame.render_widget(list, rect);
+}
+
+fn render_fitness_chart(frame: &mut Frame, model: &AppModel, rect: Rect) {
+    if model.fitness_data.is_empty() {
+        let empty = Paragraph::new("No data yet")
+            .block(Block::default().title("Fitness").borders(Borders::ALL));
+        frame.render_widget(empty, rect);
+        return;
+    }
+
+    let max_x = model.fitness_data.len() as f64;
+    let min_y = model
+        .fitness_data
+        .iter()
+        .map(|p| p.1)
+        .fold(f64::INFINITY, f64::min);
+    let max_y = model
+        .fitness_data
+        .iter()
+        .map(|p| p.1)
+        .fold(f64::NEG_INFINITY, f64::max);
+    let y_margin = if (max_y - min_y).abs() < f64::EPSILON {
+        1.0
+    } else {
+        (max_y - min_y) * 0.1
+    };
+
+    let dataset = Dataset::default()
+        .marker(symbols::Marker::Braille)
+        .style(Style::default().fg(Color::Cyan))
+        .data(&model.fitness_data);
+
+    let chart = Chart::new(vec![dataset])
+        .block(Block::default().title("Fitness").borders(Borders::ALL))
+        .x_axis(
+            Axis::default()
+                .title("Iteration")
+                .bounds([0.0, max_x])
+                .labels::<Vec<Line>>(vec![
+                    "0".into(),
+                    format!("{}", max_x as u64).into(),
+                ]),
+        )
+        .y_axis(
+            Axis::default()
+                .title("Fitness")
+                .bounds([min_y - y_margin, max_y + y_margin])
+                .labels::<Vec<Line>>(vec![
+                    format!("{}", min_y as u64).into(),
+                    format!("{}", max_y as u64).into(),
+                ]),
+        );
+    frame.render_widget(chart, rect);
 }
