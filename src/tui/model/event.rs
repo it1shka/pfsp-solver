@@ -1,6 +1,4 @@
-use std::io;
-
-use crossterm::event::{self, Event, KeyCode};
+use crossterm::event::{Event, KeyCode};
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum AppEvent {
@@ -15,8 +13,8 @@ pub enum AppEvent {
 }
 
 impl AppEvent {
-    pub fn read() -> io::Result<Option<Self>> {
-        let app_event = match event::read()? {
+    pub fn from_crossterm(event: &Event) -> Option<Self> {
+        match event {
             Event::Key(key) => match key.code {
                 KeyCode::Esc => Some(Self::Escape),
                 KeyCode::Enter => Some(Self::Enter),
@@ -28,7 +26,6 @@ impl AppEvent {
                 _ => key.code.as_char().map(Self::Key),
             },
             _ => None,
-        };
-        Ok(app_event)
+        }
     }
 }

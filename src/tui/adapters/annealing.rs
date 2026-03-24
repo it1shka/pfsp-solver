@@ -112,9 +112,10 @@ impl RunnableAdapter for AdapterAnnealing {
         let mut best_evaluation = annealing.evaluator.evaluate(&best_solution);
         while !annealing.is_cold() {
             if let Some(max_ffe) = maybe_max_ffe
-                && annealing.evaluator.eval_count() >= max_ffe {
-                    break;
-                }
+                && annealing.evaluator.eval_count() >= max_ffe
+            {
+                break;
+            }
             let result = annealing.annealing_cycle();
             let current_evaluation = annealing.evaluator.evaluate(&annealing.solution);
             if current_evaluation < best_evaluation {

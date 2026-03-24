@@ -2,9 +2,11 @@ use pfsp_solver::solver::solution::Solution;
 use ratatui::{
     Frame,
     layout::{Constraint, Direction, Layout, Rect},
-    style::{Color, Style},
+    style::{Color, Modifier, Style},
+    text::{Line, Span},
     widgets::{Block, Borders, List, ListItem, Paragraph},
 };
+use tui_textarea::TextArea;
 
 use crate::tui::{
     components::{gantt::render_gantt_chart, input::render_input, matrix::render_matrix},
@@ -94,12 +96,31 @@ fn render_solution_input(frame: &mut Frame, model: &AppModel, rect: Rect) {
 }
 
 fn render_algorithms(frame: &mut Frame, model: &AppModel, rect: Rect) {
-    let block = Block::default()
-        .title("Algorithms")
-        .borders(Borders::ALL)
-        .border_style(style_for_screen(AppScreen::Algorithms, model));
-    // TODO:
-    frame.render_widget(block, rect);
+    let items: Vec<ListItem> = model
+        .algorithms
+        .iter()
+        .enumerate()
+        .map(|(i, adapter)| {
+            let prefix = if i == model.selected_algorithm {
+                "+"
+            } else {
+                " "
+            };
+            let style = if i == model.selected_algorithm {
+                Style::default().add_modifier(Modifier::BOLD)
+            } else {
+                Style::default()
+            };
+            ListItem::new(format!("{} {}. {}", prefix, i + 1, adapter.name())).style(style)
+        })
+        .collect();
+    let list = List::new(items).block(
+        Block::default()
+            .title("Algorithms")
+            .borders(Borders::ALL)
+            .border_style(style_for_screen(AppScreen::Algorithms, model)),
+    );
+    frame.render_widget(list, rect);
 }
 
 fn render_control_panel(frame: &mut Frame, model: &AppModel, rect: Rect) {
@@ -123,7 +144,8 @@ fn render_main_panel(frame: &mut Frame, model: &AppModel, rect: Rect) {
         AppScreen::CurrentSolution => {
             render_main_panel_for_solution_input(frame, model, inner_rect)
         }
-        _ => {} // TODO:
+        AppScreen::Algorithms => render_main_panel_for_algorithms(frame, model, inner_rect),
+        _ => {}
     };
 }
 
@@ -225,4 +247,81 @@ fn render_main_panel_for_solution_input(frame: &mut Frame, model: &AppModel, rec
         ])
         .split(chunks[1]);
     frame.render_widget(error, centered[1]);
+}
+
+fn render_textarea(frame: &mut Frame, textarea: &TextArea, rect: Rect, is_focused: bool) {
+    let (cursor_row, cursor_col) = textarea.cursor();
+    let lines: Vec<Line> = textarea
+        .lines()
+        .iter()
+        .enumerate()
+        .map(|(i, line)| {
+            if is_focused && i == cursor_row {
+                let char_indices: Vec<usize> = line.char_indices().map(|(idx, _)| idx).collect();
+                let byte_start = char_indices.get(cursor_col).copied().unwrap_or(line.len());
+                let byte_end = char_indices
+                    .get(cursor_col + 1)
+                    .copied()
+                    .unwrap_or(line.len());
+                let before = &line[..byte_start];
+                let cursor_char = if byte_start < line.len() {
+                    &line[byte_start..byte_end]
+                } else {
+                    " "
+                };
+                let after = &line[byte_end..];
+                Line::from(vec![
+                    Span::raw(before.to_string()),
+                    Span::styled(
+                        cursor_char.to_string(),
+                        Style::default().bg(Color::White).fg(Color::Black),
+                    ),
+                    Span::raw(after.to_string()),
+                ])
+            } else {
+                Line::raw(line.to_string())
+            }
+        })
+        .collect();
+    let paragraph = Paragraph::new(lines).block(
+        Block::default()
+            .title("Settings")
+            .borders(Borders::ALL)
+            .border_style(if is_focused {
+                Style::default().fg(Color::Green)
+            } else {
+                Style::default()
+            }),
+    );
+    frame.render_widget(paragraph, rect);
+}
+
+fn render_main_panel_for_algorithms(frame: &mut Frame, model: &AppModel, rect: Rect) {
+    let chunks = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
+        .split(rect);
+
+    let is_focused = model.is_focused && model.screen == AppScreen::Algorithms;
+    render_textarea(frame, &model.settings_textarea, chunks[0], is_focused);
+
+    let items: Vec<ListItem> = model
+        .settings_textarea
+        .lines()
+        .iter()
+        .filter_map(|line| {
+            let parts: Vec<&str> = line.splitn(2, ':').map(|s| s.trim()).collect();
+            if parts.len() == 2 && !parts[0].is_empty() {
+                Some(ListItem::new(format!("{}: {}", parts[0], parts[1])))
+            } else {
+                None
+            }
+        })
+        .collect();
+    let parsed_list = List::new(items).block(
+        Block::default()
+            .title("Parsed Settings")
+            .borders(Borders::ALL),
+    );
+    frame.render_widget(parsed_list, chunks[1]);
 }

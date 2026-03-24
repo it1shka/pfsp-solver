@@ -1,7 +1,7 @@
 use std::{io, time::Duration};
 
 use crossterm::{
-    event::{self, DisableMouseCapture, EnableMouseCapture},
+    event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyModifiers},
     execute,
     terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
 };
@@ -14,7 +14,7 @@ use tokio::sync::mpsc::{self, UnboundedSender};
 use tokio_util::sync::CancellationToken;
 
 use crate::tui::{
-    model::{event::AppEvent, model::AppModel},
+    model::{event::AppEvent, model::AppModel, screen::AppScreen},
     view::render_frame,
 };
 
@@ -36,7 +36,6 @@ pub async fn start_application(problem: &Problem) -> color_eyre::Result<()> {
     )?;
     terminal.show_cursor()?;
 
-    // TODO: print logs to stdout
     Ok(())
 }
 
@@ -56,11 +55,11 @@ where
 
     while model.is_running {
         terminal.draw(|f| render_frame(f, model))?;
-        if let Some(event) = event_rx.recv().await {
-            model.update_on_event(event);
+        if let Some(raw_event) = event_rx.recv().await {
+            handle_event(model, &raw_event);
         }
-        while let Ok(event) = event_rx.try_recv() {
-            model.update_on_event(event);
+        while let Ok(raw_event) = event_rx.try_recv() {
+            handle_event(model, &raw_event);
         }
     }
 
@@ -68,21 +67,67 @@ where
     Ok(())
 }
 
+fn crossterm_to_textarea_input(key: &crossterm::event::KeyEvent) -> tui_textarea::Input {
+    use tui_textarea::Key;
+    let textarea_key = match key.code {
+        KeyCode::Char(c) => Key::Char(c),
+        KeyCode::Backspace => Key::Backspace,
+        KeyCode::Enter => Key::Enter,
+        KeyCode::Left => Key::Left,
+        KeyCode::Right => Key::Right,
+        KeyCode::Up => Key::Up,
+        KeyCode::Down => Key::Down,
+        KeyCode::Tab => Key::Tab,
+        KeyCode::Delete => Key::Delete,
+        KeyCode::Home => Key::Home,
+        KeyCode::End => Key::End,
+        KeyCode::PageUp => Key::PageUp,
+        KeyCode::PageDown => Key::PageDown,
+        KeyCode::Esc => Key::Esc,
+        KeyCode::F(n) => Key::F(n),
+        _ => Key::Null,
+    };
+    tui_textarea::Input {
+        key: textarea_key,
+        ctrl: key.modifiers.contains(KeyModifiers::CONTROL),
+        alt: key.modifiers.contains(KeyModifiers::ALT),
+        shift: key.modifiers.contains(KeyModifiers::SHIFT),
+    }
+}
+
+fn handle_event(model: &mut AppModel, raw_event: &Event) {
+    if model.is_focused && model.screen == AppScreen::Algorithms {
+        if let Some(AppEvent::Escape) = AppEvent::from_crossterm(raw_event) {
+            model.update_on_event(AppEvent::Escape);
+        } else if let Event::Key(key) = raw_event {
+            model
+                .settings_textarea
+                .input(crossterm_to_textarea_input(key));
+        }
+        return;
+    }
+    if let Some(app_event) = AppEvent::from_crossterm(raw_event) {
+        model.update_on_event(app_event);
+    }
+}
+
 const EVENT_POLL_INTERVAL_MS: u64 = 33;
 
-async fn handle_keyboard_events(tx: UnboundedSender<AppEvent>, token: CancellationToken) {
+async fn handle_keyboard_events(tx: UnboundedSender<Event>, token: CancellationToken) {
     loop {
         tokio::select! {
                     _ = token.cancelled() => break,
                     maybe_event = tokio::task::spawn_blocking(|| {
         event::poll(Duration::from_millis(EVENT_POLL_INTERVAL_MS))
                 .unwrap_or(false)
-                .then(|| AppEvent::read().ok().flatten()).flatten()
+                .then(|| event::read().ok()).flatten()
                     }) => {
-                        if let Ok(Some(event)) = maybe_event
-                            && tx.send(event).is_err() {
-                                break;
-                            }
+                        if let Ok(Some(raw_event)) = maybe_event {
+                            if matches!(raw_event, Event::Key(_))
+                                && tx.send(raw_event).is_err() {
+                                    break;
+                                }
+                        }
                     }
                 }
     }
