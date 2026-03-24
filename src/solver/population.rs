@@ -1,7 +1,7 @@
 use rand::{Rng, seq::SliceRandom};
 
 use crate::solver::{
-    algorithm::operators::{SwapMutation, UnaryOperator},
+    algorithm::operators::{Operator, SwapMutation, UnaryOperator},
     solution::Solution,
 };
 

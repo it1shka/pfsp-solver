@@ -3,6 +3,9 @@ use rand::{Rng, RngExt};
 use crate::solver::solution::Solution;
 
 pub trait Operator {
+    fn new(p: f32) -> Self
+    where
+        Self: Sized;
     fn name(&self) -> &'static str;
     fn probability(&self) -> f32;
 }
@@ -22,13 +25,10 @@ macro_rules! define_operator {
             pub p: f32,
         }
 
-        impl $op_name {
-            pub fn new(p: f32) -> Self {
+        impl Operator for $op_name {
+            fn new(p: f32) -> Self {
                 Self { p }
             }
-        }
-
-        impl Operator for $op_name {
             fn name(&self) -> &'static str {
                 $op_str_name
             }

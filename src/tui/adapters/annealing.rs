@@ -13,7 +13,10 @@ use tokio::sync::mpsc::UnboundedSender;
 
 use crate::{
     define_algorithm,
-    tui::adapters::adapter::{Adapter, RunLog, RunnableAdapter, Settings},
+    tui::adapters::{
+        adapter::{Adapter, RunLog, RunnableAdapter, Settings},
+        helpers::{add_unary_op, get_numeric_param, get_optional_numeric_param},
+    },
 };
 
 const FIELD_SEED: &str = "seed";
@@ -59,30 +62,7 @@ impl AdapterAnnealing {
         initial: Option<&Solution>,
     ) -> SimulatedAnnealing<impl Rng> {
         let settings = self.build_settings();
-        macro_rules! get_numeric_param {
-            ($type:ty,$field:expr,$default:expr) => {
-                settings
-                    .get($field)
-                    .map(|raw| raw.parse::<$type>().ok())
-                    .flatten()
-                    .unwrap_or($default)
-            };
-        }
-        macro_rules! add_operator {
-            ($container:expr,$op_struct:ident,$field:expr,$default:expr) => {
-                let probability = get_numeric_param!(f32, $field, $default);
-                // if (probability > 0.0) {
-                //     $container.push(Box::new($op_struct { p: probability }))
-                // }
-                $container.push(Box::new($op_struct::new(probability)))
-            };
-        }
-        let seed = {
-            settings
-                .get(FIELD_SEED)
-                .and_then(|raw| raw.parse::<u64>().ok())
-                .or(problem.initial_seed)
-        };
+        let seed = get_optional_numeric_param(&settings, FIELD_SEED, problem.initial_seed);
         let mut rng = get_rng(seed);
         let solution = if let Some(initial_solution) = initial {
             initial_solution.clone()
@@ -91,23 +71,23 @@ impl AdapterAnnealing {
         };
         let unary_ops = {
             let mut unary_ops: Vec<Box<dyn UnaryOperator<_>>> = vec![];
-            add_operator!(
-                unary_ops,
-                SwapMutation,
+            add_unary_op::<SwapMutation, _>(
+                &settings,
+                &mut unary_ops,
                 FIELD_SWAP_MUTATION_P,
-                DEFAULT_SWAP_MUTATION_P
+                DEFAULT_SWAP_MUTATION_P,
             );
-            add_operator!(
-                unary_ops,
-                InversionMutation,
+            add_unary_op::<InversionMutation, _>(
+                &settings,
+                &mut unary_ops,
                 FIELD_INVERSION_MUTATION_P,
-                DEFAULT_INVERSION_MUTATION_P
+                DEFAULT_INVERSION_MUTATION_P,
             );
             unary_ops
         };
-        let temperature = get_numeric_param!(f64, FIELD_TEMPERATURE, DEFAULT_TEMPERATURE);
-        let decay = get_numeric_param!(f64, FIELD_DECAY, DEFAULT_DECAY);
-        let threshold = get_numeric_param!(f64, FIELD_THRESHOLD, DEFAULT_THRESHOLD);
+        let temperature = get_numeric_param(&settings, FIELD_TEMPERATURE, DEFAULT_TEMPERATURE);
+        let decay = get_numeric_param(&settings, FIELD_DECAY, DEFAULT_DECAY);
+        let threshold = get_numeric_param(&settings, FIELD_THRESHOLD, DEFAULT_THRESHOLD);
         let evaluator = Box::new(TFTEvaluator::new(problem.processing_times.clone()));
 
         SimulatedAnnealing::new(
