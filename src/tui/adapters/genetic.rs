@@ -12,7 +12,7 @@ use pfsp_solver::solver::{
     evaluator::TFTEvaluator,
     helpers::get_rng,
     population::{MIN_POPULATION_SIZE, Population},
-    problem::Problem,
+    problem::{Problem, Time},
     solution::Solution,
 };
 use rand::Rng;
@@ -167,8 +167,22 @@ impl RunnableAdapter for AdapterGA {
         let settings = self.build_settings();
         let max_ffe = get_numeric_param(&settings, FIELD_MAX_FFE, DEFAULT_MAX_FFE);
         let mut genetic = self.configure_genetic(problem, initial);
-        while max_ffe > genetic.evaluator.eval_count() {
+        let mut best_solution = genetic.population.data[0].clone();
+        let mut best_evaluation = Time::MAX;
+        while genetic.evaluator.eval_count() < max_ffe {
             genetic.evolution_cycle();
+            let best_from_generation = genetic
+                .population
+                .data
+                .iter()
+                .min_by_key(|&s| genetic.evaluator.evaluate(s))
+                .unwrap()
+                .clone();
+            let best_from_generation_evaluation = genetic.evaluator.evaluate(&best_from_generation);
+            if best_from_generation_evaluation < best_evaluation {
+                best_solution = best_from_generation;
+                best_evaluation = best_from_generation_evaluation;
+            }
             let message = genetic
                 .stats
                 .operators_usage
@@ -176,19 +190,14 @@ impl RunnableAdapter for AdapterGA {
                 .map(|(&name, &usage)| format!("{} usage: {}", name, usage))
                 .collect::<Vec<_>>()
                 .join(", ");
-            let fitness = genetic.stats.best_time;
-            let best = genetic
-                .population
-                .data
-                .iter()
-                .min_by_key(|&s| genetic.evaluator.evaluate(s))
-                .unwrap()
-                .clone();
-            let _ = tx.send(RunLog {
-                best,
-                fitness,
+            let result = tx.send(RunLog {
+                best: best_solution.clone(),
+                fitness: best_evaluation,
                 message,
             });
+            if result.is_err() {
+                break;
+            }
         }
     }
 }

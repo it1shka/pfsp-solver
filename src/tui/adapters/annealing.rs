@@ -108,18 +108,19 @@ impl RunnableAdapter for AdapterAnnealing {
         let settings = self.build_settings();
         let maybe_max_ffe = get_optional_numeric_param::<u64>(&settings, FIELD_MAX_FFE, None);
         let mut annealing = self.configure_annealing(problem, initial);
-        let mut best = annealing.solution.clone();
+        let mut best_solution = annealing.solution.clone();
+        let mut best_evaluation = annealing.evaluator.evaluate(&best_solution);
         while !annealing.is_cold() {
             if let Some(max_ffe) = maybe_max_ffe {
-                if max_ffe <= annealing.evaluator.eval_count() {
+                if annealing.evaluator.eval_count() >= max_ffe {
                     break;
                 }
             }
             let result = annealing.annealing_cycle();
-            if annealing.evaluator.evaluate(&annealing.solution)
-                < annealing.evaluator.evaluate(&best)
-            {
-                best = annealing.solution.clone();
+            let current_evaluation = annealing.evaluator.evaluate(&annealing.solution);
+            if current_evaluation < best_evaluation {
+                best_solution = annealing.solution.clone();
+                best_evaluation = current_evaluation;
             }
             let message = format!(
                 "operator: {}, candidate time: {}, delta: {}, accept probability: {}, accepted: {}",
@@ -129,11 +130,14 @@ impl RunnableAdapter for AdapterAnnealing {
                 result.accept_probability,
                 result.got_accepted
             );
-            let _ = tx.send(RunLog {
-                best: best.clone(),
-                fitness: annealing.evaluator.evaluate(&best),
+            let result = tx.send(RunLog {
+                best: best_solution.clone(),
+                fitness: best_evaluation,
                 message,
             });
+            if result.is_err() {
+                break;
+            }
         }
     }
 }
