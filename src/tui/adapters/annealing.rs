@@ -25,6 +25,7 @@ const FIELD_INVERSION_MUTATION_P: &str = "inversion-mutation";
 const FIELD_TEMPERATURE: &str = "temperature";
 const FIELD_DECAY: &str = "decay";
 const FIELD_THRESHOLD: &str = "threshold";
+const FIELD_MAX_FFE: &str = "max-ffe";
 
 const DEFAULT_SWAP_MUTATION_P: f32 = 0.8;
 const DEFAULT_INVERSION_MUTATION_P: f32 = 0.2;
@@ -103,11 +104,36 @@ impl AdapterAnnealing {
 }
 
 impl RunnableAdapter for AdapterAnnealing {
-    async fn run(
-        &self,
-        _problem: &Problem,
-        _initial: Option<&Solution>,
-        _tx: UnboundedSender<RunLog>,
-    ) {
+    fn run(&self, problem: &Problem, initial: Option<&Solution>, tx: UnboundedSender<RunLog>) {
+        let settings = self.build_settings();
+        let maybe_max_ffe = get_optional_numeric_param::<u64>(&settings, FIELD_MAX_FFE, None);
+        let mut annealing = self.configure_annealing(problem, initial);
+        let mut best = annealing.solution.clone();
+        while !annealing.is_cold() {
+            if let Some(max_ffe) = maybe_max_ffe {
+                if max_ffe <= annealing.evaluator.eval_count() {
+                    break;
+                }
+            }
+            let result = annealing.annealing_cycle();
+            if annealing.evaluator.evaluate(&annealing.solution)
+                < annealing.evaluator.evaluate(&best)
+            {
+                best = annealing.solution.clone();
+            }
+            let message = format!(
+                "operator: {}, candidate time: {}, delta: {}, accept probability: {}, accepted: {}",
+                result.operator_used,
+                result.candidate_time,
+                result.delta,
+                result.accept_probability,
+                result.got_accepted
+            );
+            let _ = tx.send(RunLog {
+                best: best.clone(),
+                fitness: annealing.evaluator.evaluate(&best),
+                message,
+            });
+        }
     }
 }

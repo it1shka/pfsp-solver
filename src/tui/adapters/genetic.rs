@@ -163,11 +163,32 @@ impl AdapterGA {
 }
 
 impl RunnableAdapter for AdapterGA {
-    async fn run(
-        &self,
-        problem: &Problem,
-        initial: Option<&Solution>,
-        tx: UnboundedSender<RunLog>,
-    ) {
+    fn run(&self, problem: &Problem, initial: Option<&Solution>, tx: UnboundedSender<RunLog>) {
+        let settings = self.build_settings();
+        let max_ffe = get_numeric_param(&settings, FIELD_MAX_FFE, DEFAULT_MAX_FFE);
+        let mut genetic = self.configure_genetic(problem, initial);
+        while max_ffe > genetic.evaluator.eval_count() {
+            genetic.evolution_cycle();
+            let message = genetic
+                .stats
+                .operators_usage
+                .iter()
+                .map(|(&name, &usage)| format!("{} usage: {}", name, usage))
+                .collect::<Vec<_>>()
+                .join(", ");
+            let fitness = genetic.stats.best_time;
+            let best = genetic
+                .population
+                .data
+                .iter()
+                .min_by_key(|&s| genetic.evaluator.evaluate(s))
+                .unwrap()
+                .clone();
+            let _ = tx.send(RunLog {
+                best,
+                fitness,
+                message,
+            });
+        }
     }
 }

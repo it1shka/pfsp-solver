@@ -9,6 +9,9 @@ use tokio::sync::mpsc::UnboundedSender;
 pub type Settings = String;
 
 pub trait Adapter {
+    fn new(settings: Settings) -> Self
+    where
+        Self: Sized;
     fn name(&self) -> &'static str;
     fn get_settings(&self) -> &Settings;
     fn set_settings(&mut self, new_settings: Settings);
@@ -34,21 +37,16 @@ macro_rules! define_algorithm {
             settings: Settings,
         }
 
-        impl $name {
+        impl Adapter for $name {
             fn new(settings: Settings) -> Self {
                 Self { settings }
             }
-        }
-
-        impl Adapter for $name {
             fn name(&self) -> &'static str {
                 $str_name
             }
-
             fn get_settings(&self) -> &Settings {
                 &self.settings
             }
-
             fn set_settings(&mut self, new_settings: Settings) {
                 self.settings = new_settings;
             }
@@ -63,5 +61,5 @@ pub struct RunLog {
 }
 
 pub trait RunnableAdapter: Adapter {
-    async fn run(&self, problem: &Problem, initial: Option<&Solution>, tx: UnboundedSender<RunLog>);
+    fn run(&self, problem: &Problem, initial: Option<&Solution>, tx: UnboundedSender<RunLog>);
 }
