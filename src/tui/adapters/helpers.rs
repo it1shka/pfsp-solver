@@ -10,8 +10,7 @@ pub fn get_numeric_param<T: FromStr>(
 ) -> T {
     settings
         .get(field_name)
-        .map(|raw| raw.parse::<T>().ok())
-        .flatten()
+        .and_then(|raw| raw.parse::<T>().ok())
         .unwrap_or(default_value)
 }
 

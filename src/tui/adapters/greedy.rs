@@ -28,7 +28,7 @@ impl RunnableAdapter for AdapterGreedy {
         let fitness = evaluator.evaluate(&greedy_solution);
         let _ = tx.send(RunLog {
             best: greedy_solution,
-            fitness: fitness,
+            fitness,
             message: format!(
                 "built greedy solution, FFE count: {}",
                 evaluator.eval_count()
