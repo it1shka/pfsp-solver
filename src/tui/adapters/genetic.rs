@@ -171,25 +171,21 @@ impl RunnableAdapter for AdapterGA {
         let mut best_evaluation = Time::MAX;
         while genetic.evaluator.eval_count() < max_ffe {
             genetic.evolution_cycle();
-            let best_from_generation = genetic
-                .population
-                .data
-                .iter()
-                .min_by_key(|&s| genetic.evaluator.evaluate(s))
-                .unwrap()
-                .clone();
-            let best_from_generation_evaluation = genetic.evaluator.evaluate(&best_from_generation);
-            if best_from_generation_evaluation < best_evaluation {
-                best_solution = best_from_generation;
-                best_evaluation = best_from_generation_evaluation;
+            if genetic.stats.best_time < best_evaluation {
+                best_evaluation = genetic.stats.best_time;
+                best_solution = genetic
+                    .population
+                    .data
+                    .iter()
+                    .min_by_key(|s| genetic.evaluator.evaluate(s))
+                    .unwrap()
+                    .clone();
             }
-            let message = genetic
-                .stats
-                .operators_usage
-                .iter()
-                .map(|(&name, &usage)| format!("{} usage: {}", name, usage))
-                .collect::<Vec<_>>()
-                .join(", ");
+            let stats = &genetic.stats;
+            let message = format!(
+                "best: {}, worst: {}, avg: {:.1}",
+                stats.best_time, stats.worst_time, stats.avg_time,
+            );
             let result = tx.send(RunLog {
                 best: best_solution.clone(),
                 fitness: best_evaluation,

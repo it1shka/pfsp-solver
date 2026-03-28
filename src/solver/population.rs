@@ -2,6 +2,8 @@ use rand::{Rng, seq::SliceRandom};
 
 use crate::solver::{
     algorithm::operators::{Operator, SwapMutation, UnaryOperator},
+    evaluator::Evaluator,
+    problem::Time,
     solution::Solution,
 };
 
@@ -70,5 +72,26 @@ impl Population {
 
     pub fn p_count(&self, p: f32) -> usize {
         (p * self.len() as f32).round() as usize
+    }
+
+    pub fn best_time(&self, evaluator: &mut dyn Evaluator) -> Time {
+        self.data
+            .iter()
+            .map(|s| evaluator.evaluate(s))
+            .min()
+            .unwrap()
+    }
+
+    pub fn worst_time(&self, evaluator: &mut dyn Evaluator) -> Time {
+        self.data
+            .iter()
+            .map(|s| evaluator.evaluate(s))
+            .max()
+            .unwrap()
+    }
+
+    pub fn avg_time(&self, evaluator: &mut dyn Evaluator) -> f64 {
+        let total: Time = self.data.iter().map(|s| evaluator.evaluate(s)).sum();
+        total as f64 / self.len() as f64
     }
 }
