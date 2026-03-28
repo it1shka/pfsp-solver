@@ -359,7 +359,9 @@ fn render_logs_list(frame: &mut Frame, model: &AppModel, rect: Rect) {
     let scroll = if model.log_autoscroll {
         model.run_logs.len().saturating_sub(visible_height)
     } else {
-        model.log_scroll.min(model.run_logs.len().saturating_sub(visible_height))
+        model
+            .log_scroll
+            .min(model.run_logs.len().saturating_sub(visible_height))
     };
 
     let items: Vec<ListItem> = model
@@ -423,10 +425,7 @@ fn render_fitness_chart(frame: &mut Frame, model: &AppModel, rect: Rect) {
             Axis::default()
                 .title("Iteration")
                 .bounds([0.0, max_x])
-                .labels::<Vec<Line>>(vec![
-                    "0".into(),
-                    format!("{}", max_x as u64).into(),
-                ]),
+                .labels::<Vec<Line>>(vec!["0".into(), format!("{}", max_x as u64).into()]),
         )
         .y_axis(
             Axis::default()
