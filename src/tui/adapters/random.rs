@@ -94,10 +94,11 @@ impl RunnableAdapter for AdapterRandom {
                 best_evaluation = current_evaluation;
             }
             let message = format!(
-                "operator: {}, fitness: {}, accepted: {}",
+                "operator: {}, fitness: {}, accepted: {}, FFE: {}",
                 operator.name(),
                 current_evaluation,
-                accepted
+                accepted,
+                evaluator.eval_count(),
             );
             let result = tx.send(RunLog {
                 best: best_solution.clone(),

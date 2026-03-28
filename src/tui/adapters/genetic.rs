@@ -169,8 +169,10 @@ impl RunnableAdapter for AdapterGA {
         let mut genetic = self.configure_genetic(problem, initial);
         let mut best_solution = genetic.population.data[0].clone();
         let mut best_evaluation = Time::MAX;
+        let mut generation = 0u64;
         while genetic.evaluator.eval_count() < max_ffe {
             genetic.evolution_cycle();
+            generation += 1;
             if genetic.stats.best_time < best_evaluation {
                 best_evaluation = genetic.stats.best_time;
                 best_solution = genetic
@@ -183,8 +185,12 @@ impl RunnableAdapter for AdapterGA {
             }
             let stats = &genetic.stats;
             let message = format!(
-                "best: {}, worst: {}, avg: {:.1}",
-                stats.best_time, stats.worst_time, stats.avg_time,
+                "generation: {}, best: {}, worst: {}, avg: {:.1}, FFE: {}",
+                generation,
+                stats.best_time,
+                stats.worst_time,
+                stats.avg_time,
+                genetic.evaluator.eval_count(),
             );
             let result = tx.send(RunLog {
                 best: best_solution.clone(),
