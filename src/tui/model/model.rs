@@ -122,6 +122,7 @@ impl<'a> AppModel<'a> {
                 },
                 Algorithms => {}
                 ControlPanel => match event {
+                    Backspace => self.solution_input.clear(),
                     Key('r') => self.reset_logs(),
                     ArrowUp | Key('k') => {
                         self.log_autoscroll = false;

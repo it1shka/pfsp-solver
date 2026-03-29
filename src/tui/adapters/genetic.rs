@@ -38,7 +38,7 @@ const FIELD_SWAP_MUTATION_P: &str = "swap-mutation";
 const FIELD_INVERSION_MUTATION_P: &str = "inversion-mutation";
 const FIELD_MAX_FFE: &str = "max-ffe";
 
-const DEFAULT_POPULATION_SIZE: usize = 1000;
+const DEFAULT_POPULATION_SIZE: usize = 250;
 const DEFAULT_SELECTOR: &str = "roulette";
 const DEFAULT_TOURNAMENT_SIZE: usize = 5;
 const DEFAULT_ELITE_P: f32 = 0.05;

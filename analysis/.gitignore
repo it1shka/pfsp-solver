@@ -1,0 +1,5 @@
+.DS_Store
+.venv/
+
+# Folder with piped program outputs
+_outputs/
