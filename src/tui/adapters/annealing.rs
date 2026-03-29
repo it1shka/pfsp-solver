@@ -123,12 +123,14 @@ impl RunnableAdapter for AdapterAnnealing {
                 best_evaluation = current_evaluation;
             }
             let message = format!(
-                "operator: {}, candidate time: {}, delta: {}, accept probability: {}, accepted: {}",
+                "temperature: {:.2}, operator: {}, candidate time: {}, delta: {}, accept probability: {:.5}, accepted: {}, FFE: {}",
+                annealing.temperature,
                 result.operator_used,
                 result.candidate_time,
                 result.delta,
                 result.accept_probability,
-                result.got_accepted
+                result.got_accepted,
+                annealing.evaluator.eval_count(),
             );
             let result = tx.send(RunLog {
                 best: best_solution.clone(),

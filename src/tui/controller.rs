@@ -195,8 +195,8 @@ fn start_algorithm(model: &mut AppModel, event_tx: &UnboundedSender<ControllerEv
     let settings = model.algorithms[adapter_index].get_settings().clone();
     let short_name = model.algorithms[adapter_index].short_name().to_string();
     let problem = model.problem.clone();
-    let initial = Solution::parse(&model.solution_input.value)
-        .filter(|s| s.is_valid(problem.jobs_number));
+    let initial =
+        Solution::parse(&model.solution_input.value).filter(|s| s.is_valid(problem.jobs_number));
 
     let token = CancellationToken::new();
     model.cancellation_token = Some(token.clone());
@@ -233,10 +233,7 @@ fn stop_algorithm(model: &mut AppModel) {
 
 const EVENT_POLL_INTERVAL_MS: u64 = 33;
 
-async fn handle_keyboard_events(
-    tx: UnboundedSender<ControllerEvent>,
-    token: CancellationToken,
-) {
+async fn handle_keyboard_events(tx: UnboundedSender<ControllerEvent>, token: CancellationToken) {
     loop {
         tokio::select! {
                     _ = token.cancelled() => break,

@@ -4,8 +4,7 @@ use tui_textarea::TextArea;
 
 use crate::tui::{
     adapters::{
-        AdapterAnnealing, AdapterGA, AdapterGreedy, AdapterRandom, RunnableAdapter,
-        adapter::RunLog,
+        AdapterAnnealing, AdapterGA, AdapterGreedy, AdapterRandom, RunnableAdapter, adapter::RunLog,
     },
     components::{input::InputState, matrix::MatrixState},
     model::{event::AppEvent, screen::AppScreen},
@@ -146,6 +145,9 @@ impl<'a> AppModel<'a> {
             }
             ArrowDown | Key('j') => {
                 self.screen = self.screen.next_screen();
+            }
+            Backspace if self.screen == CurrentSolution => {
+                self.solution_input.clear();
             }
             Key(ch) if self.screen == Algorithms && !self.algorithm_running => {
                 if let Some(idx) = ch.to_digit(10) {

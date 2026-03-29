@@ -1,6 +1,6 @@
-use std::{collections::HashMap, mem};
+use std::mem;
 
-use rand::{Rng, seq::IndexedMutRandom};
+use rand::{Rng, RngExt};
 
 use crate::solver::{
     algorithm::{
@@ -15,31 +15,24 @@ use crate::solver::{
 };
 
 pub struct EvolutionStats {
-    pub operators_usage: HashMap<&'static str, usize>,
     pub best_time: Time,
+    pub worst_time: Time,
+    pub avg_time: f64,
 }
 
 impl EvolutionStats {
     fn new() -> Self {
         Self {
-            operators_usage: HashMap::new(),
             best_time: Time::MAX,
+            worst_time: Time::MAX,
+            avg_time: 0.0,
         }
-    }
-
-    fn clear(&mut self) {
-        self.operators_usage.clear();
-        self.best_time = Time::MAX;
-    }
-
-    fn increase_operator_usage(&mut self, name: &'static str, usage: usize) {
-        let entry = self.operators_usage.entry(name).or_insert(0);
-        *entry += usage;
     }
 }
 
 pub struct GeneticAlgorithm<R: Rng> {
     rng: R,
+    elite_count: usize,
     next_population: Population,
     pub stats: EvolutionStats,
     pub population: Population,
@@ -62,6 +55,7 @@ impl<R: Rng> GeneticAlgorithm<R> {
     ) -> Self {
         Self {
             rng,
+            elite_count: 0,
             next_population: Population::empty(),
             stats: EvolutionStats::new(),
             population,
@@ -95,11 +89,11 @@ impl<R: Rng> GeneticAlgorithm<R> {
 
     fn reset_before_evolution_cycle(&mut self) {
         self.next_population.clear();
-        self.stats.clear();
     }
 
     fn select_elite(&mut self) {
         let elite_count = self.population.p_count(self.elite_p);
+        self.elite_count = elite_count;
         let elite = {
             let mut rated_population = self.population_iter().collect::<Vec<_>>();
             rated_population.sort_by_key(|&(_, time)| time);
@@ -125,7 +119,8 @@ impl<R: Rng> GeneticAlgorithm<R> {
         self.binary_ops.iter().for_each(|op| {
             let effect_count = self.next_population.p_count(op.probability());
             for _ in 0..effect_count {
-                let (idx1, idx2) = select_idx_pair(&mut self.rng, 0..self.next_population.len());
+                let (idx1, idx2) =
+                    select_idx_pair(&mut self.rng, self.elite_count..self.next_population.len());
                 let data = &mut self.next_population.data;
                 let (p1, p2) = if idx1 < idx2 {
                     let (left, right) = data.split_at_mut(idx2);
@@ -136,30 +131,27 @@ impl<R: Rng> GeneticAlgorithm<R> {
                 };
                 op.mutate(&mut self.rng, p1, p2);
             }
-            self.stats.increase_operator_usage(op.name(), effect_count);
         });
     }
 
     fn perform_unary_ops(&mut self) {
+        let non_elite_len = self.next_population.len() - self.elite_count;
+        let elite_count = self.elite_count;
         self.unary_ops.iter().for_each(|op| {
-            let effect_count = self.next_population.p_count(op.probability());
+            let effect_count = (op.probability() * non_elite_len as f32).round() as usize;
             for _ in 0..effect_count {
-                let p = self.next_population.data.choose_mut(&mut self.rng).unwrap();
-                op.mutate(&mut self.rng, p);
+                let idx = elite_count + self.rng.random_range(0..non_elite_len);
+                op.mutate(&mut self.rng, &mut self.next_population.data[idx]);
             }
-            self.stats.increase_operator_usage(op.name(), effect_count);
         });
     }
 
     fn swap_populations(&mut self) {
         self.population = mem::replace(&mut self.next_population, Population::empty());
-        let best_result = self
-            .population
-            .data
-            .iter()
-            .map(|s| self.evaluator.evaluate(s))
-            .min()
-            .unwrap();
-        self.stats.best_time = best_result;
+        self.stats = EvolutionStats {
+            best_time: self.population.best_time(self.evaluator.as_mut()),
+            worst_time: self.population.worst_time(self.evaluator.as_mut()),
+            avg_time: self.population.avg_time(self.evaluator.as_mut()),
+        };
     }
 }

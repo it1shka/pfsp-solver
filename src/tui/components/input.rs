@@ -41,6 +41,11 @@ impl InputState {
             self.cursor -= 1;
         }
     }
+
+    pub fn clear(&mut self) {
+        self.value.clear();
+        self.cursor = 0;
+    }
 }
 
 pub fn render_input(title: &str, style: Style, frame: &mut Frame, state: &InputState, rect: Rect) {
