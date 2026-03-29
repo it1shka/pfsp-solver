@@ -22,3 +22,6 @@ target
 
 # Folder with problem instances for testing
 _problem_instances/
+
+# Folder with program piped outputs
+_outputs/
